@@ -12,78 +12,85 @@ find_package(diagnostic_msgs REQUIRED)
 find_package(diagnostic_updater REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+find_package(rosidl_default_generators REQUIRED)
+
 rosidl_generate_interfaces(${PROJECT_NAME}
   #"srv/SetDatum.srv"
   "srv/SetPose.srv"
-  DEPENDENCIES
-    builtin_interfaces
-    geometry_msgs
-    #geographic_msgs
-    diagnostic_msgs
+
+  DEPENDENCIES builtin_interfaces geometry_msgs diagnostic_msgs #geographic_msgs
   ADD_LINTER_TESTS
 )
 
-include_directories(SYSTEM ${Eigen_INCLUDE_DIRS})
+#include_directories(SYSTEM ${Eigen_INCLUDE_DIRS})
 include_directories(
   include
-  ${EIGEN3_INCLUDE_DIRS}
-  ${rclcpp_INCLUDE_DIRS}
-  ${geometry_msgs_INCLUDE_DIRS}
-  ${diagnostic_msgs_INCLUDE_DIRS}
-  ${diagnostic_updater_INCLUDE_DIRS}
-  ${nav_msgs_INCLUDE_DIRS}
-  ${sensor_msgs_INCLUDE_DIRS}
-  ${tf2_ros_INCLUDE_DIRS}
-  ${tf2_INCLUDE_DIRS}
-  ${tf2_geometry_msgs_INCLUDE_DIRS})
+  #  ${EIGEN3_INCLUDE_DIRS}
+  #  ${rclcpp_INCLUDE_DIRS}
+  #  ${geometry_msgs_INCLUDE_DIRS}
+  #  ${diagnostic_msgs_INCLUDE_DIRS}
+  #  ${diagnostic_updater_INCLUDE_DIRS}
+  #  ${nav_msgs_INCLUDE_DIRS}
+  #  ${sensor_msgs_INCLUDE_DIRS}
+  #  ${tf2_ros_INCLUDE_DIRS}
+  #  ${tf2_INCLUDE_DIRS}
+  #  ${tf2_geometry_msgs_INCLUDE_DIRS}
+)
 
-add_library(
-  rl_lib
+add_library(rl_lib SHARED
   src/ekf.cpp
   src/ukf.cpp
   src/filter_base.cpp
   src/filter_utilities.cpp
   src/ros_filter.cpp
-  src/ros_filter_utilities.cpp)
+  src/ros_filter_utilities.cpp
+)
+
+set(dependencies
+  "rclcpp"
+  "geometry_msgs"
+  "diagnostic_msgs"
+  "diagnostic_updater"
+  "nav_msgs"
+  "sensor_msgs"
+  "tf2_ros"
+  "tf2"
+  "tf2_geometry_msgs"
+)
+
+target_link_libraries(rl_lib Eigen3::Eigen)
+ament_target_dependencies(rl_lib ${dependencies} Eigen3)
+
+#target_link_libraries(rl_lib
+#  ${angles_LIBRARIES}
+#  ${EIGEN3_LIBRARIES}
+#  ${rclcpp_LIBRARIES}
+#  ${geometry_msgs_LIBRARIES}
+#  ${diagnostic_msgs_LIBRARIES}
+#  ${diagnostic_updater_LIBRARIES}
+#  ${nav_msgs_LIBRARIES}
+#  ${sensor_msgs_LIBRARIES}
+#  ${tf2_ros_LIBRARIES}
+#  ${tf2_LIBRARIES}
+#  ${tf2_geometry_msgs_LIBRARIES}
+#)
 
 rosidl_target_interfaces(rl_lib
-  ${PROJECT_NAME} "rosidl_typesupport_cpp")
-
-add_executable(
-  se_node
-  src/se_node.cpp
+  ${PROJECT_NAME} "rosidl_typesupport_cpp"
 )
 
-target_link_libraries(
-  rl_lib
-  ${angles_LIBRARIES}
-  ${EIGEN3_LIBRARIES}
-  ${rclcpp_LIBRARIES}
-  ${geometry_msgs_LIBRARIES}
-  ${diagnostic_msgs_LIBRARIES}
-  ${diagnostic_updater_LIBRARIES}
-  ${nav_msgs_LIBRARIES}
-  ${sensor_msgs_LIBRARIES}
-  ${tf2_ros_LIBRARIES}
-  ${tf2_LIBRARIES}
-  ${tf2_geometry_msgs_LIBRARIES}
-)
+add_executable(se_node src/se_node.cpp)
+target_link_libraries(se_node rl_lib Eigen3::Eigen)
+ament_target_dependencies(se_node ${dependencies} Eigen3)
 
-target_link_libraries(
-  se_node
-  rl_lib
-)
-
-install(
-  TARGETS
-  rl_lib
+install(TARGETS
+  #rl_lib
   se_node
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -170,12 +177,6 @@ install(
   DESTINATION lib/${PROJECT_NAME})
 endif()
 
-ament_export_dependencies(rosidl_default_runtime)
-ament_export_include_directories(include)
-ament_export_libraries(
-  rl_lib
-)
-
 # Install params config files.
 install(DIRECTORY
   params
@@ -183,4 +184,8 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
+#ament_export_dependencies(rosidl_default_runtime)
+ament_export_include_directories(include)
+#ament_export_libraries(rl_lib)
+#ament_export_libraries(${PROJECT_NAME})
 ament_package()
