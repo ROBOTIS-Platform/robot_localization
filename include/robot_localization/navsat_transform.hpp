@@ -79,9 +79,10 @@ private:
   /**
    * @brief Callback for the datum service
    */
-  void datumCallback(
-    const std::shared_ptr<robot_localization::srv::SetDatum::Request> request,
-    std::shared_ptr<robot_localization::srv::SetDatum::Response>);
+  // Commented as datumCallback replaced with lamda function.
+  //void datumCallback(
+  //  const std::shared_ptr<robot_localization::srv::SetDatum::Request> request,
+  //  std::shared_ptr<robot_localization::srv::SetDatum::Response>);
 
   /**
    * @brief Given the pose of the navsat sensor in the UTM frame, removes the
@@ -138,14 +139,14 @@ private:
    * transform
    * @param[in] msg The NavSatFix message to use in the transform
    */
-  void setTransformGps(const sensor_msgs::msg::NavSatFix::SharedPtr & msg);
+  void setTransformGps(const sensor_msgs::msg::NavSatFix::SharedPtr &msg);
 
   /**
    * @brief Used for setting the odometry data that will be used to compute the
    * transform
    * @param[in] msg The odometry message to use in the transform
    */
-  void setTransformOdometry(const nav_msgs::msg::Odometry::SharedPtr msg);
+  void setTransformOdometry(const nav_msgs::msg::Odometry::SharedPtr &msg);
 
   /**
    * @brief Frame ID of the robot's body frame
@@ -335,7 +336,7 @@ private:
    * @brief Parameter that specifies the how long we wait for a transform to
    * become available.
    */
-  tf2::Duration transform_timeout_;
+  rclcpp::Duration transform_timeout_;
 
   /**
    * @brief Whether or not to report 0 altitude
@@ -346,6 +347,15 @@ private:
   bool zero_altitude_;
 
   rclcpp::Node::SharedPtr node_;
+
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr gps_odom_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr filtered_gps_pub_;
+
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr gps_sub_;
+
+  rclcpp::Service<robot_localization::srv::SetDatum>::SharedPtr datum_srv_;
 };
 
 }  // namespace robot_localization
