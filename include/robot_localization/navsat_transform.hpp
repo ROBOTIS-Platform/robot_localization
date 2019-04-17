@@ -139,14 +139,14 @@ private:
    * transform
    * @param[in] msg The NavSatFix message to use in the transform
    */
-  void setTransformGps(const sensor_msgs::msg::NavSatFix::SharedPtr &msg);
+  void setTransformGps(const sensor_msgs::msg::NavSatFix::SharedPtr msg);
 
   /**
    * @brief Used for setting the odometry data that will be used to compute the
    * transform
    * @param[in] msg The odometry message to use in the transform
    */
-  void setTransformOdometry(const nav_msgs::msg::Odometry::SharedPtr &msg);
+  void setTransformOdometry(const nav_msgs::msg::Odometry::SharedPtr msg);
 
   /**
    * @brief Frame ID of the robot's body frame
@@ -336,6 +336,7 @@ private:
    * @brief Parameter that specifies the how long we wait for a transform to
    * become available.
    */
+  // tf2::Duration transform_timeout_;
   rclcpp::Duration transform_timeout_;
 
   /**

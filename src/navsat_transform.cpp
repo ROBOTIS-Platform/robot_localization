@@ -758,7 +758,8 @@ void NavSatTransform::setTransformOdometry(
     imu.orientation = msg->pose.pose.orientation;
     imu.header.frame_id = msg->child_frame_id;
     imu.header.stamp = msg->header.stamp;
-    sensor_msgs::msg::Imu::ConstPtr imuPtr =
+    // sensor_msgs::msg::Imu::ConstPtr imuPtr =
+    auto imuPtr = 
       std::make_shared<sensor_msgs::msg::Imu>(imu);
     imuCallback(imuPtr);
   }
