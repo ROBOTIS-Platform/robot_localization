@@ -36,8 +36,9 @@
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
+  auto node = rclcpp::Node::make_shared("navsat_transform_node");
 
-  robot_localization::NavSatTransform trans;
+  robot_localization::NavSatTransform trans(node);
 
   trans.run();
 
