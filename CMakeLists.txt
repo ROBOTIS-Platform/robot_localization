@@ -98,6 +98,7 @@ ament_target_dependencies(navsat_transform_node ${dependencies} Eigen3)
 install(TARGETS
   #rl_lib
   se_node
+  navsat_transform_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
