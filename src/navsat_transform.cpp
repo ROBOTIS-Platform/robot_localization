@@ -36,11 +36,12 @@
 #include <robot_localization/navsat_transform.hpp>
 #include <robot_localization/ros_filter_utilities.hpp>
 
-#include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <robot_localization/srv/set_datum.hpp>
 
 #include <Eigen/Dense>
 
@@ -55,14 +56,26 @@ using std::placeholders::_2;
 namespace robot_localization
 {
 NavSatTransform::NavSatTransform()
-: magnetic_declination_(0.0), utm_odom_tf_yaw_(0.0), yaw_offset_(0.0),
-  transform_timeout_(0.0), broadcast_utm_transform_(false),
+: magnetic_declination_(0.0),
+  utm_odom_tf_yaw_(0.0),
+  yaw_offset_(0.0),
+  transform_timeout_(0.0),
+  broadcast_utm_transform_(false),
   broadcast_utm_transform_as_parent_frame_(false),
-  has_transform_odom_(false), has_transform_gps_(false),
-  has_transform_imu_(false), transform_good_(false), gps_frame_id_(""),
-  gps_updated_(false), odom_updated_(false), publish_gps_(false),
-  use_odometry_yaw_(false), use_manual_datum_(false), zero_altitude_(false),
-  world_frame_id_("odom"), base_link_frame_id_("base_link"), utm_zone_(""),
+  has_transform_odom_(false),
+  has_transform_gps_(false),
+  has_transform_imu_(false),
+  transform_good_(false),
+  gps_frame_id_(""),
+  gps_updated_(false),
+  odom_updated_(false),
+  publish_gps_(false),
+  use_odometry_yaw_(false),
+  use_manual_datum_(false),
+  zero_altitude_(false),
+  world_frame_id_("odom"),
+  base_link_frame_id_("base_link"),
+  utm_zone_(""),
   tf_listener_(tf_buffer_)
 {
   node_ = rclcpp::node::Node::make_shared("navsat_transform_node");
