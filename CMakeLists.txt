@@ -7,7 +7,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-#find_package(geographic_msgs REQUIRED)
+find_package(geographic_msgs REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
 find_package(diagnostic_updater REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -21,10 +21,10 @@ find_package(Eigen3 REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  #"srv/SetDatum.srv"
+  "srv/SetDatum.srv"
   "srv/SetPose.srv"
 
-  DEPENDENCIES builtin_interfaces geometry_msgs diagnostic_msgs #geographic_msgs
+  DEPENDENCIES builtin_interfaces geometry_msgs diagnostic_msgs geographic_msgs
   ADD_LINTER_TESTS
 )
 
@@ -50,11 +50,13 @@ add_library(rl_lib SHARED
   src/filter_utilities.cpp
   src/ros_filter.cpp
   src/ros_filter_utilities.cpp
+  src/navsat_transform.cpp
 )
 
 set(dependencies
   "rclcpp"
   "geometry_msgs"
+  "geographic_msgs"
   "diagnostic_msgs"
   "diagnostic_updater"
   "nav_msgs"
@@ -88,6 +90,10 @@ rosidl_target_interfaces(rl_lib
 add_executable(se_node src/se_node.cpp)
 target_link_libraries(se_node rl_lib Eigen3::Eigen)
 ament_target_dependencies(se_node ${dependencies} Eigen3)
+
+add_executable(navsat_transform_node src/navsat_transform_node.cpp)
+target_link_libraries(navsat_transform_node rl_lib Eigen3::Eigen)
+ament_target_dependencies(navsat_transform_node ${dependencies} Eigen3)
 
 install(TARGETS
   #rl_lib

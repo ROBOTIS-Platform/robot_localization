@@ -19,7 +19,7 @@
   <depend>rclcpp</depend>
   <!--<depend>angles</depend>-->
   <depend>eigen</depend>
-  <!--<depend>geographic_msgs</depend>-->
+  <depend>geographic_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>diagnostic_msgs</depend>
   <depend>diagnostic_updater</depend>
