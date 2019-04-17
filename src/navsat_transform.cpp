@@ -511,7 +511,7 @@ void NavSatTransform::gpsFixCallback(
     double utmX = 0;
     double utmY = 0;
     std::string utm_zone_tmp;
-    NavsatConversions::LLtoUTM(msg->latitude, msg->longitude, utmY, utmX,
+    navsat_conversions::LLtoUTM(msg->latitude, msg->longitude, utmY, utmX,
       utm_zone_tmp);
     latest_utm_pose_.setOrigin(tf2::Vector3(utmX, utmY, msg->altitude));
     latest_utm_covariance_.setZero();
