@@ -1438,6 +1438,7 @@ void RosFilter::loadParams()
     std::string cmd_vel_topic_name;
     node_->get_parameter_or("control_topic_name", cmd_vel_topic_name, std::string("cmd_vel"));
 
+    RF_DEBUG("\nuse_control subscribe topic " << cmd_vel_topic_name << "\n");
     control_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
       cmd_vel_topic_name,
       std::bind(&RosFilter::controlCallback, this, std::placeholders::_1));
