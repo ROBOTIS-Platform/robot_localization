@@ -91,6 +91,14 @@ add_executable(se_node src/se_node.cpp)
 target_link_libraries(se_node rl_lib Eigen3::Eigen)
 ament_target_dependencies(se_node ${dependencies} Eigen3)
 
+add_executable(kf_node_odom src/kf_node_odom.cpp)
+target_link_libraries(kf_node_odom rl_lib Eigen3::Eigen)
+ament_target_dependencies(kf_node_odom ${dependencies} Eigen3)
+
+add_executable(kf_node_map src/kf_node_map.cpp)
+target_link_libraries(kf_node_map rl_lib Eigen3::Eigen)
+ament_target_dependencies(kf_node_map ${dependencies} Eigen3)
+
 add_executable(navsat_transform_node src/navsat_transform_node.cpp)
 target_link_libraries(navsat_transform_node rl_lib Eigen3::Eigen)
 ament_target_dependencies(navsat_transform_node ${dependencies} Eigen3)
@@ -98,6 +106,8 @@ ament_target_dependencies(navsat_transform_node ${dependencies} Eigen3)
 install(TARGETS
   #rl_lib
   se_node
+  kf_node_odom
+  kf_node_map
   navsat_transform_node
   DESTINATION lib/${PROJECT_NAME}
 )
