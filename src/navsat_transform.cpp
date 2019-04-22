@@ -98,8 +98,7 @@ void NavSatTransform::run()
   // Load the parameters we need
   node_->get_parameter_or("magnetic_declination_radians", magnetic_declination_, 0.0);
   node_->get_parameter_or("yaw_offset", yaw_offset_, 0.0);
-  node_->get_parameter_or("broadcast_utm_transform", broadcast_utm_transform_,
-    false);
+  node_->get_parameter_or("broadcast_utm_transform", broadcast_utm_transform_, false);
   node_->get_parameter_or("broadcast_utm_transform_as_parent_frame",
     broadcast_utm_transform_as_parent_frame_, false);
   node_->get_parameter_or("zero_altitude", zero_altitude_, false);
@@ -264,6 +263,8 @@ void NavSatTransform::computeTransform()
   if (!transform_good_ && has_transform_odom_ && has_transform_gps_ &&
     has_transform_imu_)
   {
+    RCLCPP_INFO(node_->get_logger(),"computeTransform()");
+
     // The UTM pose we have is given at the location of the GPS sensor on the
     // robot. We need to get the UTM pose of the robot's origin.
     tf2::Transform transform_utm_pose_corrected;
@@ -274,6 +275,9 @@ void NavSatTransform::computeTransform()
       transform_utm_pose_corrected = transform_utm_pose_;
     }
 
+    std::stringstream ss1;
+    ss1 << "Transform UTM pose corrected is \n" << transform_utm_pose_corrected;
+    RCLCPP_INFO(node_->get_logger(), "%s", ss1.str().c_str());
     // Get the IMU's current RPY values. Need the raw values (for yaw, anyway).
     tf2::Matrix3x3 mat(transform_orientation_);
 
@@ -326,23 +330,15 @@ void NavSatTransform::computeTransform()
       transform_utm_pose_corrected.getOrigin());
     utm_pose_with_orientation.setRotation(imu_quat);
 
-    utm_world_transform_.mult(transform_world_pose_,
-      utm_pose_with_orientation.inverse());
+    utm_world_transform_.mult(transform_world_pose_, utm_pose_with_orientation.inverse());
 
     utm_world_trans_inverse_ = utm_world_transform_.inverse();
 
-    RCLCPP_INFO(node_->get_logger(),
-        "Transform world frame pose is: %f",
-        transform_world_pose_);
-
-    RCLCPP_INFO(node_->get_logger(),
-        "World frame->utm transform is: %f",
-        utm_world_transform_);
-
-    // std::cout << "Transform world frame pose is: " << transform_world_pose_ <<
-      // "\n";
-    // std::cout << "World frame->utm transform is " << utm_world_transform_ <<
-      // "\n";
+    // std::cout << "Transform world frame pose is: " << transform_world_pose_ << "\n";
+    // std::cout << "World frame->utm transform is: " << utm_world_transform_ << "\n";
+    std::stringstream ss;
+    ss << "Transform world frame pose is \n" << transform_world_pose_ << "\nWorld frame->utm transform is\n " << utm_world_transform_;
+    RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
 
     transform_good_ = true;
 
@@ -571,7 +567,11 @@ void NavSatTransform::imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
      * the transform), so we can assumed that every IMU message
      * that comes here is meant to be used for that purpose. */
     tf2::fromMsg(msg->orientation, transform_orientation_);
-
+    
+    std::stringstream ss;
+    ss << "IMU orientation  is \n" << transform_orientation_;
+    RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
+    
     // Correct for the IMU's orientation w.r.t. base_link
     tf2::Transform target_frame_trans;
     bool can_transform = ros_filter_utilities::lookupTransformSafe(
@@ -696,6 +696,7 @@ bool NavSatTransform::prepareGpsOdometry(nav_msgs::msg::Odometry & gps_odom)
   bool new_data = false;
 
   if (transform_good_ && gps_updated_ && odom_updated_) {
+    RCLCPP_INFO(node_->get_logger(), "prepareGpsOdometry()");
     tf2::Transform transformed_utm_gps;
 
     transformed_utm_gps.mult(utm_world_transform_, latest_utm_pose_);
@@ -781,6 +782,11 @@ void NavSatTransform::setTransformGps(
 
   transform_utm_pose_.setOrigin(tf2::Vector3(utm_x, utm_y, msg->altitude));
   transform_utm_pose_.setRotation(tf2::Quaternion::getIdentity());
+  
+  std::stringstream ss;
+  ss << "UTM pose  is \n" << transform_utm_pose_;
+  RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
+    
   has_transform_gps_ = true;
 }
 
@@ -790,11 +796,10 @@ void NavSatTransform::setTransformOdometry(
   tf2::fromMsg(msg->pose.pose, transform_world_pose_);
   has_transform_odom_ = true;
 
-  RCLCPP_INFO(node_->get_logger(),
-      "Initial odometry pose is %f",
-      transform_world_pose_);
-
   // std::cout << "Initial odometry pose is " << transform_world_pose_ << "\n";
+  std::stringstream ss;
+  ss << "Initial odometry pose is \n" << transform_world_pose_;
+  RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
 
   // Users can optionally use the (potentially fused) heading from
   // the odometry source, which may have multiple fused sources of
