@@ -303,10 +303,16 @@ void NavSatTransform::computeTransform()
      */
     imu_yaw += (magnetic_declination_ + yaw_offset_);
 
-    std::cout << "Corrected for magnetic declination of " << std::fixed <<
-      magnetic_declination_ << " and user-specified offset of " <<
-      yaw_offset_ << "." <<
-      " Transform heading factor is now " << imu_yaw << "\n";
+    RCLCPP_INFO(node_->get_logger(), 
+        "Corrected for magnetic declination of %.4f and user-specified offset of %.4f. Transform heading factor is now %.4f",
+        magnetic_declination_,
+        yaw_offset_,
+        imu_yaw);
+
+    // std::cout << "Corrected for magnetic declination of " << std::fixed <<
+      // magnetic_declination_ << " and user-specified offset of " <<
+      // yaw_offset_ << "." <<
+      // " Transform heading factor is now " << imu_yaw << "\n";
 
     // Convert to tf-friendly structures
     tf2::Quaternion imu_quat;
@@ -325,10 +331,18 @@ void NavSatTransform::computeTransform()
 
     utm_world_trans_inverse_ = utm_world_transform_.inverse();
 
-    std::cout << "Transform world frame pose is: " << transform_world_pose_ <<
-      "\n";
-    std::cout << "World frame->utm transform is " << utm_world_transform_ <<
-      "\n";
+    RCLCPP_INFO(node_->get_logger(),
+        "Transform world frame pose is: %f",
+        transform_world_pose_);
+
+    RCLCPP_INFO(node_->get_logger(),
+        "World frame->utm transform is: %f",
+        utm_world_transform_);
+
+    // std::cout << "Transform world frame pose is: " << transform_world_pose_ <<
+      // "\n";
+    // std::cout << "World frame->utm transform is " << utm_world_transform_ <<
+      // "\n";
 
     transform_good_ = true;
 
@@ -438,10 +452,15 @@ void NavSatTransform::getRobotOriginUtmPose(
     robot_utm_pose = offset.inverse() * gps_utm_pose;
   } else {
     if (gps_frame_id_ != "") {
-      std::cerr << "Unable to obtain " << base_link_frame_id_ << "->" <<
-        gps_frame_id_ <<
-        " transform. Will assume navsat device is mounted at "
-        "robot's origin\n";
+      RCLCPP_ERROR(node_->get_logger(), 
+          "Unable to obtain %s -> %s transform. Will assume navsat device is mounted at robot's origin",
+          base_link_frame_id_.c_str(),
+          gps_frame_id_.c_str());
+
+      // std::cerr << "Unable to obtain " << base_link_frame_id_ << "->" <<
+        // gps_frame_id_ <<
+        // " transform. Will assume navsat device is mounted at "
+        // "robot's origin\n";
     }
 
     robot_utm_pose = gps_utm_pose;
@@ -471,16 +490,26 @@ void NavSatTransform::getRobotOriginWorldPose(
           robot_orientation.getRotation(), gps_offset_rotated.getOrigin()));
       robot_odom_pose = gps_offset_rotated.inverse() * gps_odom_pose;
     } else {
-      std::cerr << "Could not obtain " << world_frame_id_ << "->" <<
-        base_link_frame_id_ <<
-        " transform. Will not remove offset of navsat device from "
-        "robot's origin.\n";
+      RCLCPP_ERROR(node_->get_logger(),
+          "Could not obtain %s -> %s transform. Will not remove offset of navsat device from robot's origin",
+          world_frame_id_.c_str(),
+          base_link_frame_id_.c_str());
+
+      // std::cerr << "Could not obtain " << world_frame_id_ << "->" <<
+        // base_link_frame_id_ <<
+        // " transform. Will not remove offset of navsat device from "
+        // "robot's origin.\n";
     }
   } else {
-    std::cerr << "Could not obtain " << base_link_frame_id_ << "->" <<
-      gps_frame_id_ <<
-      " transform. Will not remove offset of navsat device from "
-      "robot's origin.\n";
+    RCLCPP_ERROR(node_->get_logger(),
+      "Could not obtain %s -> %s transform. Will not remove offset of navsat device from robot's origin",
+      base_link_frame_id_.c_str(),
+      gps_frame_id_.c_str());
+   
+    // std::cerr << "Could not obtain " << base_link_frame_id_ << "->" <<
+      // gps_frame_id_ <<
+      // " transform. Will not remove offset of navsat device from "
+      // "robot's origin.\n";
   }
 }
 
@@ -490,9 +519,12 @@ void NavSatTransform::gpsFixCallback(
   gps_frame_id_ = msg->header.frame_id;
 
   if (gps_frame_id_.empty()) {
-    std::cerr << "NavSatFix message has empty frame_id. Will assume navsat "
-      "device is mounted "
-      "at robot's origin.\n";
+    RCLCPP_ERROR(node_->get_logger(),
+      "NavSatFix message has empty frame_id. Will assume navsat device is mounted at robot's origin.");
+        
+    // std::cerr << "NavSatFix message has empty frame_id. Will assume navsat "
+      // "device is mounted "
+      // "at robot's origin.\n";
   }
 
   // Make sure the GPS data is usable
@@ -728,13 +760,24 @@ void NavSatTransform::setTransformGps(
   navsat_conversions::LLtoUTM(msg->latitude, msg->longitude, utm_y, utm_x,
     utm_zone_);
 
-  std::cout << "Datum (latitude, longitude, altitude) is (" << std::fixed <<
-    msg->latitude << ", " << msg->longitude << ", " << msg->altitude <<
-    ")" <<
-    "\n";
-  std::cout << "Datum UTM coordinate is (" << std::fixed << utm_x << ", " <<
-    utm_y << ")" <<
-    "\n";
+  RCLCPP_INFO(node_->get_logger(), 
+      "Datum (latitude, longitude, altitude) is (%.4f, %.4f, %.4f)",
+      msg->latitude,
+      msg->longitude,
+      msg->altitude);
+
+  RCLCPP_INFO(node_->get_logger(),
+      "Datum UTM coordinate is (%.4f, %.4f)",
+      utm_x,
+      utm_y);
+
+  // std::cout << "Datum (latitude, longitude, altitude) is (" << std::fixed <<
+    // msg->latitude << ", " << msg->longitude << ", " << msg->altitude <<
+    // ")" <<
+    // "\n";
+  // std::cout << "Datum UTM coordinate is (" << std::fixed << utm_x << ", " <<
+    // utm_y << ")" <<
+    // "\n";
 
   transform_utm_pose_.setOrigin(tf2::Vector3(utm_x, utm_y, msg->altitude));
   transform_utm_pose_.setRotation(tf2::Quaternion::getIdentity());
@@ -747,7 +790,11 @@ void NavSatTransform::setTransformOdometry(
   tf2::fromMsg(msg->pose.pose, transform_world_pose_);
   has_transform_odom_ = true;
 
-  std::cout << "Initial odometry pose is " << transform_world_pose_ << "\n";
+  RCLCPP_INFO(node_->get_logger(),
+      "Initial odometry pose is %f",
+      transform_world_pose_);
+
+  // std::cout << "Initial odometry pose is " << transform_world_pose_ << "\n";
 
   // Users can optionally use the (potentially fused) heading from
   // the odometry source, which may have multiple fused sources of

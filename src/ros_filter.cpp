@@ -240,10 +240,13 @@ void RosFilter::controlStampedCallback(
     // ROS_WARN_STREAM_THROTTLE(5.0, "Commanded velocities must be given in the
     // robot's body frame (" << base_link_frame_id_ << "). Message frame was " <<
     // msg->header.frame_id);
-    std::cerr <<
-      "Commanded velocities must be given in the robot's body frame (" <<
-      base_link_frame_id_ << "). Message frame was " <<
-      msg->header.frame_id << "\n";
+    RCLCPP_ERROR(node_->get_logger(), "Commanded velocities must be given in the robot's body frame ('%s'). Message Frame was '%s'",
+        base_link_frame_id_.c_str(), msg->header.frame_id.c_str());
+
+    // std::cerr <<
+    //   "Commanded velocities must be given in the robot's body frame (" <<
+    //   base_link_frame_id_ << "). Message frame was " <<
+    //   msg->header.frame_id << "\n";
   }
 }
 
@@ -656,14 +659,20 @@ void RosFilter::loadParams()
       if (debug_stream_.is_open()) {
         filter_->setDebug(debug, &debug_stream_);
       } else {
-        std::cerr <<
-          "RosFilter::loadParams() - unable to create debug output file " <<
-          debug_out_file << "\n";
+        RCLCPP_ERROR(node_->get_logger(), "RosFilter::loadParams() - unable to create debug output file %s",
+            debug_out_file.c_str());
+
+        // std::cerr <<
+        //   "RosFilter::loadParams() - unable to create debug output file " <<
+        //   debug_out_file << "\n";
       }
     } catch (const std::exception & e) {
-      std::cerr <<
-        "RosFilter::loadParams() - unable to create debug output file" <<
-        debug_out_file << ". Error was " << e.what() << "\n";
+      RCLCPP_ERROR(node_->get_logger(), "RosFilter::loadParams() - unable to create debug output file %s . Error was %s",
+        debug_out_file.c_str(), e.what());
+
+      // std::cerr <<
+      //   "RosFilter::loadParams() - unable to create debug output file" <<
+      //   debug_out_file << ". Error was " << e.what() << "\n";
     }
   }
 
@@ -705,10 +714,13 @@ void RosFilter::loadParams()
     odom_frame_id_ == base_link_frame_id_ ||
     map_frame_id_ == base_link_frame_id_)
   {
-    std::cerr <<
-      "Invalid frame configuration! The values for map_frame, odom_frame, "
-      "and base_link_frame must be unique." <<
-      "\n";
+    RCLCPP_ERROR(node_->get_logger(), 
+      "Invalid frame configuration! The values for map_frame, odom_frame, and base_link_frame must be unique.");
+
+    // std::cerr <<
+    //   "Invalid frame configuration! The values for map_frame, odom_frame, "
+    //   "and base_link_frame must be unique." <<
+    //   "\n";
   }
 
   // Try to resolve tf_prefix
@@ -758,14 +770,21 @@ void RosFilter::loadParams()
   node_->get_parameter_or("history_length", history_length_double, 0.0);
 
   if (!smooth_lagged_data_ && std::abs(history_length_double) > 0) {
-    std::cerr << "Filter history interval of " << history_length_double <<
-      " specified, but smooth_lagged_data is set to false. Lagged "
-      "data will not be smoothed.";
+    RCLCPP_ERROR(node_->get_logger(),
+        "Filter history interval of %f specified, but smooth_lagged_data is set to false. Lagged data will not be smoothed",
+        history_length_double);
+
+    // std::cerr << "Filter history interval of " << history_length_double <<
+    //   " specified, but smooth_lagged_data is set to false. Lagged "
+    //   "data will not be smoothed.";
   }
 
   if (smooth_lagged_data_ && history_length_double < 0) {
-    std::cerr << "Negative history interval of " << history_length_double <<
-      " specified. Absolute value will be assumed.";
+    RCLCPP_ERROR(node_->get_logger(), "Negative history interval of %f specified. Absolute value will be assumed.", 
+        history_length_double);
+
+    // std::cerr << "Negative history interval of " << history_length_double <<
+    //   " specified. Absolute value will be assumed.";
   }
 
   history_length_ = rclcpp::Duration(
@@ -789,39 +808,61 @@ void RosFilter::loadParams()
   if (use_control_) {
     if (node_->get_parameter("control_config", control_update_vector)) {
       if (control_update_vector.size() != TWIST_SIZE) {
-        std::cerr << "Control configuration must be of size " << TWIST_SIZE <<
-          ". Provided config was of "
-          "size " <<
-          control_update_vector.size() <<
-          ". No control term will be used.\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Control configuration must be of size %d. Provided config was of size %d. No control term will be used.",
+            TWIST_SIZE, 
+            control_update_vector.size());
+
+        // std::cerr << "Control configuration must be of size " << TWIST_SIZE <<
+        //   ". Provided config was of "
+        //   "size " <<
+        //   control_update_vector.size() <<
+        //   ". No control term will be used.\n";
         use_control_ = false;
       }
     } else {
-      std::cerr << "use_control is set to true, but control_config is missing. "
-        "No control term will be used.\n";
+      RCLCPP_ERROR(node_->get_logger(), "use_control is set to true, but control_config is missing. No control term will be used");
+
+      // std::cerr << "use_control is set to true, but control_config is missing. "
+      //   "No control term will be used.\n";
+      
       use_control_ = false;
     }
 
     if (node_->get_parameter("acceleration_limits", acceleration_limits)) {
       if (acceleration_limits.size() != TWIST_SIZE) {
-        std::cerr << "Acceleration configuration must be of size " << TWIST_SIZE <<
-          ". Provided config was of "
-          "size " <<
-          acceleration_limits.size() <<
-          ". No control term will be used.\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Acceleration configuration must be of size %d. Provided config was of size %d. No control term will be used.",
+            TWIST_SIZE,
+            acceleration_limits.size());
+
+        // std::cerr << "Acceleration configuration must be of size " << TWIST_SIZE <<
+          // ". Provided config was of "
+          // "size " <<
+          // acceleration_limits.size() <<
+          // ". No control term will be used.\n";
+
         use_control_ = false;
       }
     } else {
-      std::cerr << "use_control is set to true, but acceleration_limits is "
-        "missing. Will use default values.\n";
+      RCLCPP_ERROR(node_->get_logger(), "use_control is set to true, but acceleration_limits is missing. Will use default values.");
+
+      // std::cerr << "use_control is set to true, but acceleration_limits is "
+        // "missing. Will use default values.\n";
     }
 
     if (node_->get_parameter("acceleration_gains", acceleration_gains)) {
       const int size = acceleration_gains.size();
       if (size != TWIST_SIZE) {
-        std::cerr << "Acceleration gain configuration must be of size " <<
-          TWIST_SIZE << ". Provided config was of size " << size <<
-          ". All gains will be assumed to be 1.\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Acceleration gain configuration must be of size %d. Provided config was of size %d. All gains will be assumed to be 1.", 
+            TWIST_SIZE,
+            size);
+
+        // std::cerr << "Acceleration gain configuration must be of size " <<
+          // TWIST_SIZE << ". Provided config was of size " << size <<
+          // ". All gains will be assumed to be 1.\n";
+
         std::fill_n(acceleration_gains.begin(), std::min(size, TWIST_SIZE),
           1.0);
         acceleration_gains.resize(TWIST_SIZE, 1.0);
@@ -830,33 +871,49 @@ void RosFilter::loadParams()
 
     if (node_->get_parameter("deceleration_limits", deceleration_limits)) {
       if (deceleration_limits.size() != TWIST_SIZE) {
-        std::cerr << "Deceleration configuration must be of size " << TWIST_SIZE <<
-          ". Provided config was of size " <<
-          deceleration_limits.size() <<
-          ". No control term will be used.\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Deceleration configuration must be of size %d. Provided config was of size %d. No control term will be used.",
+            TWIST_SIZE,
+            deceleration_limits.size());
+
+        // std::cerr << "Deceleration configuration must be of size " << TWIST_SIZE <<
+          // ". Provided config was of size " <<
+          // deceleration_limits.size() <<
+          // ". No control term will be used.\n";
+ 
         use_control_ = false;
       }
     } else {
-      std::cout << "use_control is set to true, but no deceleration_limits "
-        "specified. Will use acceleration "
-        "limits.\n";
+      RCLCPP_ERROR(node_->get_logger(), "use_control is set to true, but deceleration_limits specified. Will use acceleration limits");
+
+      // std::cout << "use_control is set to true, but no deceleration_limits "
+        // "specified. Will use acceleration "
+        // "limits.\n";
+      
       deceleration_limits = acceleration_limits;
     }
 
     if (node_->get_parameter("deceleration_gains", deceleration_gains)) {
       const int size = deceleration_gains.size();
       if (size != TWIST_SIZE) {
-        std::cerr << "Deceleration gain configuration must be of size " <<
-          TWIST_SIZE << ". Provided config was of size " << size <<
-          ". All gains will be assumed to be 1.\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Deleceration gain configuration must be of size %d. Provided config was of size %d. All gains will be assumed to be 1.",
+            TWIST_SIZE,
+            size);
+        
+        // std::cerr << "Deceleration gain configuration must be of size " <<
+          // TWIST_SIZE << ". Provided config was of size " << size <<
+          // ". All gains will be assumed to be 1.\n";
+
         std::fill_n(deceleration_gains.begin(), std::min(size, TWIST_SIZE),
           1.0);
         deceleration_gains.resize(TWIST_SIZE, 1.0);
       }
     } else {
-      std::cout << "use_control is set to true, but no deceleration_gains "
-        "specified. Will use acceleration "
-        "gains.\n";
+      RCLCPP_ERROR(node_->get_logger(), "use_control is set to true, but deceleration_gains specified. Will use deceleration_gains");
+      // std::cout << "use_control is set to true, but no deceleration_gains "
+        // "specified. Will use acceleration "
+        // "gains.\n";
       deceleration_gains = acceleration_gains;
     }
   }
@@ -870,9 +927,15 @@ void RosFilter::loadParams()
   std::vector<double> initial_state(STATE_SIZE, 0.0);
   if (node_->get_parameter("initial_state", initial_state)) {
     if (initial_state.size() != STATE_SIZE) {
-      std::cerr << "Initial state must be of size " << STATE_SIZE <<
-        ". Provided config was of size " << initial_state.size() <<
-        ". The initial state will be ignored.\n";
+      RCLCPP_ERROR(node_->get_logger(), 
+          "Initial state must be of size %d. Provided config was of size %d. The initial state will be ignored.", 
+          STATE_SIZE, 
+          initial_state.size());
+
+      // std::cerr << "Initial state must be of size " << STATE_SIZE <<
+        // ". Provided config was of size " << initial_state.size() <<
+        // ". The initial state will be ignored.\n";
+
     } else {
       Eigen::Map<Eigen::VectorXd> eigen_state(initial_state.data(),
         initial_state.size());
@@ -963,9 +1026,14 @@ void RosFilter::loadParams()
       node_->get_parameter(odom_topic_name + std::string("_relative"));
 
       if (relative && differential) {
-        std::cerr << "Both " << odom_topic_name << "_differential" <<
-          " and " << odom_topic_name <<
-          "_relative were set to true. Using differential mode.\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Both %s_differential and %s_relative were set to true. Using differential mode.", 
+            odom_topic_name.c_str(), 
+            odom_topic_name.c_str());
+
+        // std::cerr << "Both " << odom_topic_name << "_differential" <<
+          // " and " << odom_topic_name <<
+          // "_relative were set to true. Using differential mode.\n";
 
         relative = false;
       }
@@ -1097,9 +1165,14 @@ void RosFilter::loadParams()
         relative);
 
       if (relative && differential) {
-        std::cerr << "Both " << pose_topic_name << "_differential" <<
-          " and " << pose_topic_name <<
-          "_relative were set to true. Using differential mode.\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Both %s_differential and %s_relative were set to true. Using differential mode.", 
+            pose_topic_name.c_str(), 
+            pose_topic_name.c_str());
+
+        // std::cerr << "Both " << pose_topic_name << "_differential" <<
+          // " and " << pose_topic_name <<
+          // "_relative were set to true. Using differential mode.\n";
 
         relative = false;
       }
@@ -1158,9 +1231,13 @@ void RosFilter::loadParams()
             pose_update_vec[StateMemberYaw];
         }
       } else {
-        std::cerr << "Warning: " << pose_topic <<
-          " is listed as an input topic, "
-          "but all pose update variables are false\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Warning %s is listed as an input topic, but all pose update variables are false", 
+            pose_topic.c_str());
+
+        // std::cerr << "Warning: " << pose_topic <<
+          // " is listed as an input topic, "
+          // "but all pose update variables are false\n";
       }
 
       RF_DEBUG("Subscribed to " <<
@@ -1223,9 +1300,13 @@ void RosFilter::loadParams()
           twist_update_vec[StateMemberVpitch];
         twist_var_counts[StateMemberVyaw] += twist_update_vec[StateMemberVyaw];
       } else {
-        std::cerr << "Warning: " << twist_topic <<
-          " is listed as an input topic, "
-          "but all twist update variables are false\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Warning %s is listed as an input topic, but all twist update variables are false", 
+            twist_topic.c_str()); 
+
+        // std::cerr << "Warning: " << twist_topic <<
+          // " is listed as an input topic, "
+          // "but all twist update variables are false\n";
       }
 
       RF_DEBUG("Subscribed to " <<
@@ -1256,9 +1337,14 @@ void RosFilter::loadParams()
       node_->get_parameter(imu_topic_name + std::string("_relative"), relative);
 
       if (relative && differential) {
-        std::cerr << "Both " << imu_topic_name << "_differential" <<
-          " and " << imu_topic_name <<
-          "_relative were set to true. Using differential mode.\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Both %s_differential and %s_relative were set to true. Using differential mode.", 
+            imu_topic_name.c_str(), 
+            imu_topic_name.c_str());
+
+        // std::cerr << "Both " << imu_topic_name << "_differential" <<
+          // " and " << imu_topic_name <<
+          // "_relative were set to true. Using differential mode.\n";
 
         relative = false;
       }
@@ -1325,22 +1411,28 @@ void RosFilter::loadParams()
       if (control_update_vector[ControlMemberVx] &&
         static_cast<bool>(accel_update_vec[StateMemberAx]))
       {
-        std::cerr << "X acceleration is being measured from IMU; X velocity "
-          "control input is disabled\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+          "X acceleration is being measured from IMU; X velocity control input is disabled");
+        // std::cerr << "X acceleration is being measured from IMU; X velocity "
+          // "control input is disabled\n";
         control_update_vector[ControlMemberVx] = 0;
       }
       if (control_update_vector[ControlMemberVy] &&
         static_cast<bool>(accel_update_vec[StateMemberAy]))
       {
-        std::cerr << "Y acceleration is being measured from IMU; Y velocity "
-          "control input is disabled\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+          "Y acceleration is being measured from IMU; Y velocity control input is disabled");
+        // std::cerr << "Y acceleration is being measured from IMU; Y velocity "
+          // "control input is disabled\n";
         control_update_vector[ControlMemberVy] = 0;
       }
       if (control_update_vector[ControlMemberVz] &&
         static_cast<bool>(accel_update_vec[StateMemberAz]))
       {
-        std::cerr << "Z acceleration is being measured from IMU; Z velocity "
-          "control input is disabled\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+          "Z acceleration is being measured from IMU; Z velocity control input is disabled");
+        // std::cerr << "Z acceleration is being measured from IMU; Z velocity "
+          // "control input is disabled\n";
         control_update_vector[ControlMemberVz] = 0;
       }
 
@@ -1364,9 +1456,12 @@ void RosFilter::loadParams()
         topic_subs_.push_back(node_->create_subscription<sensor_msgs::msg::Imu>(
             imu_topic, imu_callback));
       } else {
-        std::cerr << "Warning: " << imu_topic <<
-          " is listed as an input topic, "
-          "but all its update variables are false\n";
+        RCLCPP_ERROR(node_->get_logger(), 
+            "Warning: %s is listed as an input topic, but all its update variables are false", 
+            imu_topic.c_str());
+        // std::cerr << "Warning: " << imu_topic <<
+          // " is listed as an input topic, "
+          // "but all its update variables are false\n";
       }
 
       if (pose_update_sum > 0) {
@@ -1417,9 +1512,11 @@ void RosFilter::loadParams()
   if (use_control_ && std::accumulate(control_update_vector.begin(),
     control_update_vector.end(), 0) == 0)
   {
-    std::cerr << "use_control is set to true, but control_config has only "
-      "false values. No control term "
-      "will be used.\n";
+    RCLCPP_ERROR(node_->get_logger(), 
+        "use_control is set to true, but control_config has only false values. No control term will be used.");
+    // std::cerr << "use_control is set to true, but control_config has only "
+      // "false values. No control term "
+      // "will be used.\n";
     use_control_ = false;
   }
 
@@ -1823,9 +1920,13 @@ void RosFilter::run()
             //                                  base_link_frame_id_);
           }
         } else {
-          std::cerr << "Odometry message frame_id was " <<
-            filtered_position.header.frame_id << ", expected " <<
-            map_frame_id_ << " or " << odom_frame_id_ << "\n";
+          RCLCPP_ERROR(node_->get_logger(), "Odometry message frame_id was %s, expected %s or %s",
+              filtered_position.header.frame_id.c_str(), 
+              map_frame_id_.c_str(), 
+              odom_frame_id_.c_str());
+          // std::cerr << "Odometry message frame_id was " <<
+            // filtered_position.header.frame_id << ", expected " <<
+            // map_frame_id_ << " or " << odom_frame_id_ << "\n";
         }
       }
 
@@ -1866,9 +1967,11 @@ void RosFilter::run()
     }
 
     if (!loop_rate.sleep()) {
-      std::cerr <<
-        "Failed to meet update rate! Try decreasing the rate, limiting "
-        "sensor output frequency, or limiting the number of sensors.\n";
+      RCLCPP_ERROR(node_->get_logger(), 
+        "Failed to meet update rate! Try decreasing the rate, limiting sensor output frequency, or limiting the number of sensors.");
+      // std::cerr <<
+        // "Failed to meet update rate! Try decreasing the rate, limiting "
+        // "sensor output frequency, or limiting the number of sensors.\n";
     }
   }
 }
