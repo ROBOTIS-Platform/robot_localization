@@ -335,13 +335,12 @@ void FilterBase::validateDelta(rclcpp::Duration & delta)
   // rclcpp::Duration(100000.0) value is 0.00010000000000000000479
   // This handles issues with ROS time when use_sim_time is on and we're playing
   // from bags.
-  /* if (delta > rclcpp::Duration(100000.0))
+  if (delta.nanoseconds() > 100000.0e+9)//rclcpp::Duration(100000.0))
   {
-    FB_DEBUG("Delta was very large. Suspect playing from bag file. Setting to
-  0.01\n");
+    FB_DEBUG("Delta was very large. Suspect playing from bag file. Setting to 0.01\n");
 
     delta = rclcpp::Duration(0.01);
-  } */
+  }
 }
 
 void FilterBase::prepareControl(
@@ -385,7 +384,8 @@ void FilterBase::wrapStateAngles()
 
 bool FilterBase::checkMahalanobisThreshold(
   const Eigen::VectorXd & innovation,
-  const Eigen::MatrixXd & innovation_covariance, const double n_sigmas)
+  const Eigen::MatrixXd & innovation_covariance, 
+  const double n_sigmas)
 {
   double squared_mahalanobis =
     innovation.dot(innovation_covariance * innovation);

@@ -436,7 +436,7 @@ protected:
    * @param[in] n_sigmas - Number of standard deviations that are considered
    * acceptable
    */
-  virtual boolcheckMahalanobisThreshold(
+  virtual bool checkMahalanobisThreshold(
             const Eigen::VectorXd & innovation,
             const Eigen::MatrixXd & innovation_covariance,
             const double n_sigmas);
