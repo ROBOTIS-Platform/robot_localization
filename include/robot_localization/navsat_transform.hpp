@@ -52,13 +52,13 @@
 namespace robot_localization
 {
 
-class NavSatTransform
+class NavSatTransform : public rclcpp::Node
 {
 public:
   /**
    * @brief Constructor
    */
-  NavSatTransform(rclcpp::Node::SharedPtr node);
+  NavSatTransform(std::string node_name);
 
   /**
    * @brief Destructor
@@ -68,7 +68,7 @@ public:
   /**
    * @brief Main run loop
    */
-  void run();
+  void run(double frequency);
 
 private:
   /**
@@ -80,9 +80,9 @@ private:
    * @brief Callback for the datum service
    */
   // Commented as datumCallback replaced with lamda function.
-  //void datumCallback(
-  //  const std::shared_ptr<robot_localization::srv::SetDatum::Request> request,
-  //  std::shared_ptr<robot_localization::srv::SetDatum::Response>);
+  bool datumCallback(
+    const std::shared_ptr<robot_localization::srv::SetDatum::Request> request,
+    std::shared_ptr<robot_localization::srv::SetDatum::Response>);
 
   /**
    * @brief Given the pose of the navsat sensor in the UTM frame, removes the
@@ -294,7 +294,7 @@ private:
   /**
    * @brief Used for publishing the static world_frame->utm transform
    */
-  tf2_ros::StaticTransformBroadcaster utm_broadcaster_;
+  std::shared_ptr<tf2_ros::StaticTransformBroadcaster> utm_broadcaster_;
 
   /**
    * @brief Stores the yaw we need to compute the transform
@@ -348,6 +348,7 @@ private:
   bool zero_altitude_;
 
   rclcpp::Node::SharedPtr node_;
+  rclcpp::TimerBase::SharedPtr update_timer_;
 
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr gps_odom_pub_;
   rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr filtered_gps_pub_;

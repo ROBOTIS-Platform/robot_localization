@@ -36,11 +36,19 @@
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("navsat_transform_node");
 
-  robot_localization::NavSatTransform trans(node);
+  std::string node_name = "navsat_transform_node";
+  auto node = std::make_shared<robot_localization::NavSatTransform>(node_name);
 
-  trans.run();
+  rclcpp::spin(node);
+
+  rclcpp::shutdown();
+
+  // auto node = rclcpp::Node::make_shared("navsat_transform_node");
+
+  // robot_localization::NavSatTransform trans(node);
+
+  // trans.run();
 
   return 0;
 }
