@@ -41,14 +41,24 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include "rcutils/cmdline_parser.h"
 
 int main(int argc, char ** argv)
 {
-  rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("se_node");
+  setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
-  std::string filter_type = "ekf";
-  node->get_parameter("filter_type", filter_type);
+  rclcpp::init(argc, argv);
+  // auto node = rclcpp::Node::make_shared("se_node");
+
+  char *cli_options[4];
+
+  std::string filter_type = "ekf";  
+  cli_options[0] = rcutils_cli_get_option(argv, argv + argc, "-filter");
+  if (nullptr != cli_options[0]) {
+    filter_type = std::string(cli_options[0]);
+  }
+
+  // node->get_parameter("filter_type", filter_type);
   std::transform(filter_type.begin(), filter_type.end(), filter_type.begin(),
     ::tolower);
 
@@ -59,9 +69,24 @@ int main(int argc, char ** argv)
     double kappa = 0.0;
     double beta = 2.0;
 
-    node->get_parameter("alpha", alpha);
-    node->get_parameter("kappa", kappa);
-    node->get_parameter("beta", beta);
+    cli_options[1] = rcutils_cli_get_option(argv, argv + argc, "-alpha");
+    if (nullptr != cli_options[1]) {
+      alpha = std::stoi(cli_options[1]);
+    }
+
+    cli_options[2] = rcutils_cli_get_option(argv, argv + argc, "-kappa");
+    if (nullptr != cli_options[2]) {
+      kappa = std::stoi(cli_options[2]);
+    }
+
+    cli_options[3] = rcutils_cli_get_option(argv, argv + argc, "-beta");
+    if (nullptr != cli_options[3]) {
+      beta = std::stoi(cli_options[3]);
+    }
+
+    // node->get_parameter("alpha", alpha);
+    // node->get_parameter("kappa", kappa);
+    // node->get_parameter("beta", beta);
 
     filter = std::make_unique<robot_localization::Ukf>(alpha, kappa, beta);
   } else {
@@ -73,8 +98,15 @@ int main(int argc, char ** argv)
     filter = std::make_unique<robot_localization::Ekf>();
   }
 
-  robot_localization::RosFilter ros_filter(node, filter);
-  ros_filter.run();
+  std::string node_name = "se_node";
+  auto node = std::make_shared<robot_localization::RosFilter>(node_name, filter);
+
+  rclcpp::spin(node);
+
+  rclcpp::shutdown();
+
+  // robot_localization::RosFilter ros_filter(node, filter);
+  // ros_filter.run();
 
   return 0;
 }

@@ -91,13 +91,13 @@ add_executable(se_node src/se_node.cpp)
 target_link_libraries(se_node rl_lib Eigen3::Eigen)
 ament_target_dependencies(se_node ${dependencies} Eigen3)
 
-add_executable(kf_node_odom src/kf_node_odom.cpp)
-target_link_libraries(kf_node_odom rl_lib Eigen3::Eigen)
-ament_target_dependencies(kf_node_odom ${dependencies} Eigen3)
+# add_executable(kf_node_odom src/kf_node_odom.cpp)
+# target_link_libraries(kf_node_odom rl_lib Eigen3::Eigen)
+# ament_target_dependencies(kf_node_odom ${dependencies} Eigen3)
 
-add_executable(kf_node_map src/kf_node_map.cpp)
-target_link_libraries(kf_node_map rl_lib Eigen3::Eigen)
-ament_target_dependencies(kf_node_map ${dependencies} Eigen3)
+# add_executable(kf_node_map src/kf_node_map.cpp)
+# target_link_libraries(kf_node_map rl_lib Eigen3::Eigen)
+# ament_target_dependencies(kf_node_map ${dependencies} Eigen3)
 
 add_executable(navsat_transform_node src/navsat_transform_node.cpp)
 target_link_libraries(navsat_transform_node rl_lib Eigen3::Eigen)
@@ -106,8 +106,8 @@ ament_target_dependencies(navsat_transform_node ${dependencies} Eigen3)
 install(TARGETS
   #rl_lib
   se_node
-  kf_node_odom
-  kf_node_map
+  # kf_node_odom
+  # kf_node_map
   navsat_transform_node
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -117,82 +117,82 @@ install(TARGETS
 #  DESTINATION lib/${PROJECT_NAME}
 #)
 
-if(BUILD_TESTING)
-  find_package(ament_cmake_gtest REQUIRED)
+# if(BUILD_TESTING)
+  # find_package(ament_cmake_gtest REQUIRED)
 
-  find_package(ament_cmake_cppcheck REQUIRED)
-  find_package(ament_cmake_cpplint REQUIRED)
-  find_package(ament_cmake_lint_cmake REQUIRED)
-  find_package(ament_cmake_uncrustify REQUIRED)
+  # find_package(ament_cmake_cppcheck REQUIRED)
+  # find_package(ament_cmake_cpplint REQUIRED)
+  # find_package(ament_cmake_lint_cmake REQUIRED)
+  # find_package(ament_cmake_uncrustify REQUIRED)
 
 
-  #### FILTER BASE TESTS ####
-  ament_add_gtest(filter_base-test test/test_filter_base.cpp)
-  target_link_libraries(filter_base-test rl_lib)
+  # #### FILTER BASE TESTS ####
+  # ament_add_gtest(filter_base-test test/test_filter_base.cpp)
+  # target_link_libraries(filter_base-test rl_lib)
 
-  # This test uses se_node node for convenience.
-  ament_add_gtest(test_filter_base_diagnostics_timestamps
-                    test/test_filter_base_diagnostics_timestamps.cpp)
-  target_link_libraries(test_filter_base_diagnostics_timestamps rl_lib)
-  add_dependencies(test_filter_base_diagnostics_timestamps se_node)
+  # # This test uses se_node node for convenience.
+  # ament_add_gtest(test_filter_base_diagnostics_timestamps
+                    # test/test_filter_base_diagnostics_timestamps.cpp)
+  # target_link_libraries(test_filter_base_diagnostics_timestamps rl_lib)
+  # add_dependencies(test_filter_base_diagnostics_timestamps se_node)
 
-  #### EKF TESTS ######
-  ament_add_gtest(test_ekf test/test_ekf.cpp)
-  target_link_libraries(test_ekf rl_lib)
+  # #### EKF TESTS ######
+  # ament_add_gtest(test_ekf test/test_ekf.cpp)
+  # target_link_libraries(test_ekf rl_lib)
 
-  ament_add_gtest(test_ekf_localization_node_interfaces
-  test/test_ekf_localization_node_interfaces.cpp)
-  target_link_libraries(test_ekf_localization_node_interfaces rl_lib)
+  # ament_add_gtest(test_ekf_localization_node_interfaces
+  # test/test_ekf_localization_node_interfaces.cpp)
+  # target_link_libraries(test_ekf_localization_node_interfaces rl_lib)
 
-  ament_add_gtest(test_ekf_localization_node_bag1 test/test_localization_node_bag_pose_tester.cpp)
-  target_link_libraries(test_ekf_localization_node_bag1 rl_lib)
+  # ament_add_gtest(test_ekf_localization_node_bag1 test/test_localization_node_bag_pose_tester.cpp)
+  # target_link_libraries(test_ekf_localization_node_bag1 rl_lib)
 
-  ament_add_gtest(test_ekf_localization_node_bag2 test/test_localization_node_bag_pose_tester.cpp)
-  target_link_libraries(test_ekf_localization_node_bag2 rl_lib)
+  # ament_add_gtest(test_ekf_localization_node_bag2 test/test_localization_node_bag_pose_tester.cpp)
+  # target_link_libraries(test_ekf_localization_node_bag2 rl_lib)
 
-  ament_add_gtest(test_ekf_localization_node_bag3 test/test_localization_node_bag_pose_tester.cpp)
-  target_link_libraries(test_ekf_localization_node_bag3 rl_lib)
+  # ament_add_gtest(test_ekf_localization_node_bag3 test/test_localization_node_bag_pose_tester.cpp)
+  # target_link_libraries(test_ekf_localization_node_bag3 rl_lib)
 
-  #### UKF TESTS #####
-  ament_add_gtest(test_ukf test/test_ukf.cpp)
-  target_link_libraries(test_ukf rl_lib)
+  # #### UKF TESTS #####
+  # ament_add_gtest(test_ukf test/test_ukf.cpp)
+  # target_link_libraries(test_ukf rl_lib)
 
-  ament_add_gtest(test_ukf_localization_node_interfaces test/test_ukf_localization_node_interfaces.cpp)
-  target_link_libraries(test_ukf_localization_node_interfaces rl_lib)
+  # ament_add_gtest(test_ukf_localization_node_interfaces test/test_ukf_localization_node_interfaces.cpp)
+  # target_link_libraries(test_ukf_localization_node_interfaces rl_lib)
 
-  ament_add_gtest(test_ukf_localization_node_bag1 test/test_localization_node_bag_pose_tester.cpp)
-  target_link_libraries(test_ukf_localization_node_bag1 rl_lib)
+  # ament_add_gtest(test_ukf_localization_node_bag1 test/test_localization_node_bag_pose_tester.cpp)
+  # target_link_libraries(test_ukf_localization_node_bag1 rl_lib)
 
-  ament_add_gtest(test_ukf_localization_node_bag2 test/test_localization_node_bag_pose_tester.cpp)
-  target_link_libraries(test_ukf_localization_node_bag2 rl_lib)
+  # ament_add_gtest(test_ukf_localization_node_bag2 test/test_localization_node_bag_pose_tester.cpp)
+  # target_link_libraries(test_ukf_localization_node_bag2 rl_lib)
 
-  ament_add_gtest(test_ukf_localization_node_bag3 test/test_localization_node_bag_pose_tester.cpp)
-  target_link_libraries(test_ukf_localization_node_bag3 rl_lib)
+  # ament_add_gtest(test_ukf_localization_node_bag3 test/test_localization_node_bag_pose_tester.cpp)
+  # target_link_libraries(test_ukf_localization_node_bag3 rl_lib)
 
-  # This forces cppcheck to consider all files in this project to be C++,
-  # including the headers which end with .h, which cppcheck would normally
-  # consider to be C instead.
-  ament_cppcheck(LANGUAGE "c++")
-  ament_cpplint()
-  ament_lint_cmake()
-  ament_uncrustify()
+  # # This forces cppcheck to consider all files in this project to be C++,
+  # # including the headers which end with .h, which cppcheck would normally
+  # # consider to be C instead.
+  # ament_cppcheck(LANGUAGE "c++")
+  # ament_cpplint()
+  # ament_lint_cmake()
+  # ament_uncrustify()
 
-install(
-  TARGETS
-  filter_base-test
-  test_filter_base_diagnostics_timestamps
-  test_ekf
-  test_ekf_localization_node_interfaces
-  test_ekf_localization_node_bag1
-  test_ekf_localization_node_bag2
-  test_ekf_localization_node_bag3
-  test_ukf
-  test_ukf_localization_node_interfaces
-  test_ukf_localization_node_bag1
-  test_ukf_localization_node_bag2
-  test_ukf_localization_node_bag3
-  DESTINATION lib/${PROJECT_NAME})
-endif()
+# install(
+  # TARGETS
+  # filter_base-test
+  # test_filter_base_diagnostics_timestamps
+  # test_ekf
+  # test_ekf_localization_node_interfaces
+  # test_ekf_localization_node_bag1
+  # test_ekf_localization_node_bag2
+  # test_ekf_localization_node_bag3
+  # test_ukf
+  # test_ukf_localization_node_interfaces
+  # test_ukf_localization_node_bag1
+  # test_ukf_localization_node_bag2
+  # test_ukf_localization_node_bag3
+  # DESTINATION lib/${PROJECT_NAME})
+# endif()
 
 # Install params config files.
 install(DIRECTORY

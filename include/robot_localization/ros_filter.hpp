@@ -87,13 +87,11 @@ struct CallbackData
   double rejection_threshold_;
 };
 
-using MeasurementQueue =
-  std::priority_queue<MeasurementPtr, std::vector<MeasurementPtr>,
-    Measurement>;
+using MeasurementQueue = std::priority_queue<MeasurementPtr, std::vector<MeasurementPtr>, Measurement>;
 using MeasurementHistoryDeque = std::deque<MeasurementPtr>;
 using FilterStateHistoryDeque = std::deque<FilterStatePtr>;
 
-class RosFilter
+class RosFilter : public rclcpp::Node
 {
 public:
   //! @brief Constructor
@@ -102,7 +100,8 @@ public:
   //! this template is doing so with the correct object type
   //!
   RosFilter(
-    rclcpp::Node::SharedPtr node,
+    // rclcpp::Node::SharedPtr node,
+    std::string node_name,
     robot_localization::FilterBase::UniquePtr & filter);
 
   //! @brief Destructor
@@ -110,6 +109,10 @@ public:
   //! Clears out the message filters and topic subscribers.
   //!
   ~RosFilter();
+
+  //! @brief Initialize filter
+  //
+  void initialize();
 
   //! @brief Resets the filter to its initial state
   //!
@@ -652,6 +655,17 @@ protected:
   //! @brief Node handle
   //!
   rclcpp::Node::SharedPtr node_;
+
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr position_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::AccelWithCovarianceStamped>::SharedPtr accel_pub_;
+  std::shared_ptr<tf2_ros::TransformBroadcaster> world_transform_broadcaster_;
+
+  rclcpp::TimerBase::SharedPtr update_timer_;
+
+  double minFrequency_;
+  double maxFrequency_;
+  std::unique_ptr<diagnostic_updater::HeaderlessTopicDiagnostic> freq_diag_;
+  rclcpp::Time last_diag_time_;
 
   //! @brief Transform buffer for managing coordinate transforms
   //!

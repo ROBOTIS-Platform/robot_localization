@@ -53,20 +53,32 @@
 namespace robot_localization
 {
 RosFilter::RosFilter(
-  rclcpp::Node::SharedPtr node,
+  // rclcpp::Node::SharedPtr node,
+  std::string node_name,
   robot_localization::FilterBase::UniquePtr & filter)
-: static_diag_error_level_(diagnostic_msgs::msg::DiagnosticStatus::OK),
+: Node(node_name),
+  filter_(std::move(filter)),
+  static_diag_error_level_(diagnostic_msgs::msg::DiagnosticStatus::OK),
   dynamic_diag_error_level_(diagnostic_msgs::msg::DiagnosticStatus::OK),
-  tf_buffer_(node->get_clock()), // Added this line to fix the build on crystal
+  tf_buffer_(this->get_clock()), // Added this line to fix the build on crystal
   tf_listener_(tf_buffer_),
-  frequency_(30.0), history_length_(0),
-  last_set_pose_time_(0, 0, RCL_ROS_TIME), latest_control_(),
-  latest_control_time_(0, 0, RCL_ROS_TIME), tf_timeout_(0),
-  tf_time_offset_(0), print_diagnostics_(true), node_(node),
-  gravitational_acceleration_(9.80665), publish_transform_(true),
-  publish_acceleration_(false), two_d_mode_(false), use_control_(false),
-  smooth_lagged_data_(false), filter_(std::move(filter))
+  frequency_(30.0),
+  history_length_(0),
+  last_set_pose_time_(0, 0, RCL_ROS_TIME),
+  latest_control_(),
+  latest_control_time_(0, 0, RCL_ROS_TIME),
+  tf_timeout_(0),
+  tf_time_offset_(0), 
+  print_diagnostics_(true), 
+  gravitational_acceleration_(9.80665), 
+  publish_transform_(true),
+  publish_acceleration_(false), 
+  two_d_mode_(false),
+  use_control_(false),
+  smooth_lagged_data_(false) 
 {
+  node_ = std::shared_ptr<::rclcpp::Node>(this, [](::rclcpp::Node *) {});
+
   state_variable_names_.push_back("X");
   state_variable_names_.push_back("Y");
   state_variable_names_.push_back("Z");
@@ -84,9 +96,62 @@ RosFilter::RosFilter(
   state_variable_names_.push_back("Z_ACCELERATION");
 
   diagnostic_updater_.setHardwareID("none");
+
+  initialize();
 }
 
 RosFilter::~RosFilter() {topic_subs_.clear();}
+
+void RosFilter::initialize()
+{ 
+  loadParams();
+
+  if (print_diagnostics_)
+  {
+	  diagnostic_updater_.add("Filter diagnostic updater", this,
+			  &RosFilter::aggregateDiagnostics);
+  }
+
+  // Set up the frequency diagnostic
+  minFrequency_ = frequency_ - 2.0;
+  maxFrequency_ = frequency_ + 2.0;
+  freq_diag_ = std::make_unique<diagnostic_updater::HeaderlessTopicDiagnostic>(
+      "odometry/filtered",
+      diagnostic_updater_,
+      diagnostic_updater::FrequencyStatusParam(
+        &minFrequency_,
+        &maxFrequency_,
+        0.1,
+        10));
+
+  // We may need to broadcast a different transform than
+  // the one we've already calculated.
+  // tf2::Transform map_odom_trans;
+  // tf2::Transform odom_base_link_trans;
+  // geometry_msgs::msg::TransformStamped map_odom_trans_msg;
+  // rclcpp::Time cur_time;
+  // rclcpp::Time last_diag_time = node_->now();
+
+  // Clear out the transforms
+  // world_base_link_trans_msg_.transform =
+    // tf2::toMsg(tf2::Transform::getIdentity());
+  // map_odom_trans_msg.transform = tf2::toMsg(tf2::Transform::getIdentity());
+
+  // Publisher
+  position_pub_ = node_->create_publisher<nav_msgs::msg::Odometry>("odometry/filtered");
+  world_transform_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
+
+  // Optional acceleration publisher
+  if (publish_acceleration_) {
+    accel_pub_ =
+      node_->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>("accel/filtered");
+  }
+
+  last_diag_time_ = node_->now();
+
+  run();
+}
+
 
 void RosFilter::reset()
 {
@@ -640,8 +705,7 @@ void RosFilter::loadParams()
   node_->get_parameter_or("print_diagnostics", print_diagnostics_, false);
 
   // Check for custom gravitational acceleration value
-  node_->get_parameter("gravitational_acceleration",
-    gravitational_acceleration_);
+  node_->get_parameter("gravitational_acceleration", gravitational_acceleration_);
 
   // Grab the debug param. If true, the node will produce a LOT of output.
   bool debug = false;
@@ -680,8 +744,7 @@ void RosFilter::loadParams()
   // base_link) and odometry frame (typically odom)
   node_->get_parameter_or("map_frame", map_frame_id_, std::string("map"));
   node_->get_parameter_or("odom_frame", odom_frame_id_, std::string("odom"));
-  node_->get_parameter_or("base_link_frame", base_link_frame_id_,
-    std::string("base_link"));
+  node_->get_parameter_or("base_link_frame", base_link_frame_id_, std::string("base_link"));
 
   /*
    * These parameters are designed to enforce compliance with REP-105:
@@ -756,8 +819,7 @@ void RosFilter::loadParams()
 
   double sensor_timeout = 1.0 / frequency_;
   node_->get_parameter("sensor_timeout", sensor_timeout);
-  filter_->setSensorTimeout(
-    rclcpp::Duration(filter_utilities::secToNanosec(sensor_timeout)));
+  filter_->setSensorTimeout(rclcpp::Duration(filter_utilities::secToNanosec(sensor_timeout)));
 
   // Determine if we're in 2D mode
   two_d_mode_ = false;
@@ -766,6 +828,7 @@ void RosFilter::loadParams()
   // Smoothing window size
   smooth_lagged_data_ = false;
   node_->get_parameter_or("smooth_lagged_data", smooth_lagged_data_, false);
+
   double history_length_double = 0.0;
   node_->get_parameter_or("history_length", history_length_double, 0.0);
 
@@ -969,11 +1032,17 @@ void RosFilter::loadParams()
     "\nprint_diagnostics is " <<
     (print_diagnostics_ ? "true" : "false") << "\n");
 
+  auto set_pose_callback = 
+    [this](const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) -> void
+    {
+      setPoseCallback(msg);
+    };
+
   // Create a subscriber for manually setting/resetting pose
   set_pose_sub_ =
     node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "set_pose",
-    std::bind(&RosFilter::setPoseCallback, this, std::placeholders::_1));
+    set_pose_callback);
 
   // Create a service for manually setting/resetting pose
   // set_pose_service_ =
@@ -988,14 +1057,15 @@ void RosFilter::loadParams()
     std::shared_ptr<robot_localization::srv::SetPose::Response> response)
     -> bool {
       geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg =
-        std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(
-        request->pose);
+        std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(request->pose);
+
       setPoseCallback(msg);
       return true;
     };
 
   set_pose_service_ = node_->create_service<robot_localization::srv::SetPose>(
-    "set_pose", setPoseSrvCallback);
+    "set_pose", 
+    setPoseSrvCallback);
 
   // Init the last last measurement time so we don't get a huge initial delta
   filter_->setLastMeasurementTime(node_->now());
@@ -1085,8 +1155,7 @@ void RosFilter::loadParams()
             pose_callback_data, twist_callback_data);
 
         topic_subs_.push_back(
-          node_->create_subscription<nav_msgs::msg::Odometry>(odom_topic,
-          odom_callback));
+          node_->create_subscription<nav_msgs::msg::Odometry>(odom_topic, odom_callback));
       } else {
 
         std::stringstream stream;
@@ -1532,13 +1601,15 @@ void RosFilter::loadParams()
       acceleration_limits, acceleration_gains, deceleration_limits,
       deceleration_gains);
 
-//    std::string cmd_vel_topic_name;
-//    node_->get_parameter_or("control_topic_name", cmd_vel_topic_name, std::string("cmd_vel"));
-//
-//    RF_DEBUG("\nuse_control subscribe topic " << cmd_vel_topic_name << "\n");
+    auto control_callback = 
+      [this](const geometry_msgs::msg::Twist::SharedPtr msg) -> void
+      {
+        controlCallback(msg);  
+      };
+
     control_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
       "cmd_vel",
-      std::bind(&RosFilter::controlCallback, this, std::placeholders::_1));
+      control_callback);
   }
 
   /* Warn users about:
@@ -1599,8 +1670,7 @@ void RosFilter::loadParams()
   process_noise_covariance.setZero();
   std::vector<double> process_noise_covar_flat;
 
-  if (node_->get_parameter("process_noise_covariance",
-    process_noise_covar_flat))
+  if (node_->get_parameter("process_noise_covariance", process_noise_covar_flat))
   {
     assert(process_noise_covar_flat.size() == STATE_SIZE * STATE_SIZE);
 
@@ -1623,8 +1693,7 @@ void RosFilter::loadParams()
   initial_estimate_error_covariance.setZero();
   std::vector<double> estimate_error_covar_flat;
 
-  if (node_->get_parameter("initial_estimate_covariance",
-    estimate_error_covar_flat))
+  if (node_->get_parameter("initial_estimate_covariance", estimate_error_covar_flat))
   {
     assert(estimate_error_covar_flat.size() == STATE_SIZE * STATE_SIZE);
 
@@ -1788,56 +1857,59 @@ void RosFilter::poseCallback(
 
 void RosFilter::run()
 {
-  loadParams();
+  // loadParams();
 
-  if (print_diagnostics_)
+  // if (print_diagnostics_)
+  // {
+		// diagnostic_updater_.add("Filter diagnostic updater", this,
+				// &RosFilter::aggregateDiagnostics);
+  // }
+
+  // // Set up the frequency diagnostic
+  // double minFrequency = frequency_ - 2;
+  // double maxFrequency = frequency_ + 2;
+  // diagnostic_updater::HeaderlessTopicDiagnostic freqDiag("odometry/filtered",
+			// diagnostic_updater_,
+			// diagnostic_updater::FrequencyStatusParam(&minFrequency,
+					// &maxFrequency, 0.1, 10));
+
+  // // We may need to broadcast a different transform than
+  // // the one we've already calculated.
+  // tf2::Transform map_odom_trans;
+  // tf2::Transform odom_base_link_trans;
+  // geometry_msgs::msg::TransformStamped map_odom_trans_msg;
+  // rclcpp::Time cur_time;
+  // rclcpp::Time last_diag_time = node_->now();
+
+  // // Clear out the transforms
+  // world_base_link_trans_msg_.transform =
+    // tf2::toMsg(tf2::Transform::getIdentity());
+  // map_odom_trans_msg.transform = tf2::toMsg(tf2::Transform::getIdentity());
+
+  // // Publisher
+  // rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr position_pub =
+    // node_->create_publisher<nav_msgs::msg::Odometry>("odometry/filtered");
+  // tf2_ros::TransformBroadcaster world_transform_broadcaster(node_);
+
+  // // Optional acceleration publisher
+  // rclcpp::Publisher<geometry_msgs::msg::AccelWithCovarianceStamped>::SharedPtr
+    // accel_pub;
+  // if (publish_acceleration_) {
+    // accel_pub =
+      // node_->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>(
+      // "accel/filtered");
+  // }
+
+  // rclcpp::Rate loop_rate(frequency_);
+
+  
+  update_timer_ = this->create_wall_timer(
+    std::chrono::duration<double>(1./frequency_),
+    [this]()
   {
-	  diagnostic_updater_.add("Filter diagnostic updater", this,
-			  &RosFilter::aggregateDiagnostics);
-  }
-
-  // Set up the frequency diagnostic
-  double minFrequency = frequency_ - 2;
-  double maxFrequency = frequency_ + 2;
-  diagnostic_updater::HeaderlessTopicDiagnostic freqDiag("odometry/filtered",
-		  diagnostic_updater_,
-		  diagnostic_updater::FrequencyStatusParam(&minFrequency,
-				  &maxFrequency, 0.1, 10));
-
-  // We may need to broadcast a different transform than
-  // the one we've already calculated.
-  tf2::Transform map_odom_trans;
-  tf2::Transform odom_base_link_trans;
-  geometry_msgs::msg::TransformStamped map_odom_trans_msg;
-  rclcpp::Time cur_time;
-  rclcpp::Time last_diag_time = node_->now();
-
-  // Clear out the transforms
-  world_base_link_trans_msg_.transform =
-    tf2::toMsg(tf2::Transform::getIdentity());
-  map_odom_trans_msg.transform = tf2::toMsg(tf2::Transform::getIdentity());
-
-  // Publisher
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr position_pub =
-    node_->create_publisher<nav_msgs::msg::Odometry>("odometry/filtered");
-  tf2_ros::TransformBroadcaster world_transform_broadcaster(node_);
-
-  // Optional acceleration publisher
-  rclcpp::Publisher<geometry_msgs::msg::AccelWithCovarianceStamped>::SharedPtr
-    accel_pub;
-  if (publish_acceleration_) {
-    accel_pub =
-      node_->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>(
-      "accel/filtered");
-  }
-
-  rclcpp::Rate loop_rate(frequency_);
-
-  while (rclcpp::ok()) {
     // The spin will call all the available callbacks and enqueue
     // their received measurements
-    rclcpp::spin_some(node_);
-    cur_time = node_->now();
+    rclcpp::Time cur_time = node_->now();
 
     // Now we'll integrate any measurements we've received
     integrateMeasurements(cur_time);
@@ -1845,41 +1917,37 @@ void RosFilter::run()
     // Get latest state and publish it
     nav_msgs::msg::Odometry filtered_position;
 
-    if (getFilteredOdometryMessage(filtered_position)) {
-      world_base_link_trans_msg_.header.stamp =
-        tf_time_offset_ + filtered_position.header.stamp;
-      world_base_link_trans_msg_.header.frame_id =
-        filtered_position.header.frame_id;
-      world_base_link_trans_msg_.child_frame_id =
-        filtered_position.child_frame_id;
+    if (getFilteredOdometryMessage(filtered_position)) 
+    {
+      world_base_link_trans_msg_.transform = tf2::toMsg(tf2::Transform::getIdentity());
+      world_base_link_trans_msg_.header.stamp = tf_time_offset_ + filtered_position.header.stamp;
+      world_base_link_trans_msg_.header.frame_id = filtered_position.header.frame_id;
+      world_base_link_trans_msg_.child_frame_id = filtered_position.child_frame_id;
 
-      world_base_link_trans_msg_.transform.translation.x =
-        filtered_position.pose.pose.position.x;
-      world_base_link_trans_msg_.transform.translation.y =
-        filtered_position.pose.pose.position.y;
-      world_base_link_trans_msg_.transform.translation.z =
-        filtered_position.pose.pose.position.z;
-      world_base_link_trans_msg_.transform.rotation =
-        filtered_position.pose.pose.orientation;
+      world_base_link_trans_msg_.transform.translation.x = filtered_position.pose.pose.position.x;
+      world_base_link_trans_msg_.transform.translation.y = filtered_position.pose.pose.position.y;
+      world_base_link_trans_msg_.transform.translation.z = filtered_position.pose.pose.position.z;
+      world_base_link_trans_msg_.transform.rotation = filtered_position.pose.pose.orientation;
 
       // If the world_frame_id_ is the odom_frame_id_ frame, then we can just
       // send the transform. If the world_frame_id_ is the map_frame_id_ frame,
       // we'll have some work to do.
-      if (publish_transform_) {
-        if (filtered_position.header.frame_id == odom_frame_id_) {
-          world_transform_broadcaster.sendTransform(world_base_link_trans_msg_);
-        } else if (filtered_position.header.frame_id == map_frame_id_) {
-          try {
+      if (publish_transform_) 
+      {
+        if (filtered_position.header.frame_id == odom_frame_id_) 
+        {
+          world_transform_broadcaster_->sendTransform(world_base_link_trans_msg_);
+        } 
+        else if (filtered_position.header.frame_id == map_frame_id_) 
+        {
+          try 
+          {
             tf2::Transform world_base_link_trans;
-            tf2::fromMsg(world_base_link_trans_msg_.transform,
-              world_base_link_trans);
+            tf2::fromMsg(world_base_link_trans_msg_.transform, world_base_link_trans);
 
-            tf2::fromMsg(tf_buffer_
-              .lookupTransform(base_link_frame_id_,
-              odom_frame_id_,
-              tf2::TimePointZero)
-              .transform,
-              odom_base_link_trans);
+            tf2::Transform base_link_odom_trans;
+            tf2::fromMsg(tf_buffer_.lookupTransform(base_link_frame_id_, odom_frame_id_, tf2::TimePointZero).transform,
+                          base_link_odom_trans);
 
             /*
              * First, see these two references:
@@ -1904,22 +1972,31 @@ void RosFilter::run()
              * transform.
              */
 
-            map_odom_trans.mult(world_base_link_trans, odom_base_link_trans);
+            tf2::Transform map_odom_trans;
+            map_odom_trans.mult(world_base_link_trans, base_link_odom_trans);
 
+            geometry_msgs::msg::TransformStamped map_odom_trans_msg;
             map_odom_trans_msg.transform = tf2::toMsg(map_odom_trans);
-            map_odom_trans_msg.header.stamp =
-              tf_time_offset_ + filtered_position.header.stamp;
+            map_odom_trans_msg.header.stamp = tf_time_offset_ + filtered_position.header.stamp;
             map_odom_trans_msg.header.frame_id = map_frame_id_;
             map_odom_trans_msg.child_frame_id = odom_frame_id_;
 
-            world_transform_broadcaster.sendTransform(map_odom_trans_msg);
-          } catch (...) {
+            world_transform_broadcaster_->sendTransform(map_odom_trans_msg);
+          } 
+          catch (...) 
+          {
+            RCLCPP_ERROR(node_->get_logger(), "Could not obtain transform from %s -> %s",
+                odom_frame_id_.c_str(),
+                base_link_frame_id_.c_str());
+
             // ROS_ERROR_STREAM_DELAYED_THROTTLE(5.0, "Could not obtain
             // transform from "
             //                                  << odom_frame_id_ << "->" <<
             //                                  base_link_frame_id_);
           }
-        } else {
+        } 
+        else 
+        {
           RCLCPP_ERROR(node_->get_logger(), "Odometry message frame_id was %s, expected %s or %s",
               filtered_position.header.frame_id.c_str(), 
               map_frame_id_.c_str(), 
@@ -1931,20 +2008,19 @@ void RosFilter::run()
       }
 
       // Fire off the position and the transform
-      position_pub->publish(filtered_position);
+      position_pub_->publish(filtered_position);
 
       if (print_diagnostics_)
       {
-    	  freqDiag.tick();
+    	  freq_diag_->tick();
       }
     }
 
     // Publish the acceleration if desired and filter is initialized
     geometry_msgs::msg::AccelWithCovarianceStamped filtered_acceleration;
-    if (publish_acceleration_ &&
-      getFilteredAccelMessage(filtered_acceleration))
+    if (publish_acceleration_ && getFilteredAccelMessage(filtered_acceleration))
     {
-      accel_pub->publish(filtered_acceleration);
+      accel_pub_->publish(filtered_acceleration);
     }
 
     /* Diagnostics can behave strangely when playing back from bag
@@ -1952,28 +2028,20 @@ void RosFilter::run()
      * time suddenly moving backwards as well as the standard
      * timeout criterion before publishing. */
 
-    double diag_duration = (cur_time - last_diag_time).nanoseconds();
+    double diag_duration = (cur_time - last_diag_time_).nanoseconds();
     if (print_diagnostics_ &&
-    		(diag_duration >= diagnostic_updater_.getPeriod() ||
-    				diag_duration < 0.0))
+    		(diag_duration >= diagnostic_updater_.getPeriod() || diag_duration < 0.0))
     {
     	diagnostic_updater_.force_update();
-    	last_diag_time = cur_time;
+    	last_diag_time_ = cur_time;
     }
 
     // Clear out expired history data
-    if (smooth_lagged_data_) {
+    if (smooth_lagged_data_) 
+    {
       clearExpiredHistory(filter_->getLastMeasurementTime() - history_length_);
     }
-
-    if (!loop_rate.sleep()) {
-      RCLCPP_ERROR(node_->get_logger(), 
-        "Failed to meet update rate! Try decreasing the rate, limiting sensor output frequency, or limiting the number of sensors.");
-      // std::cerr <<
-        // "Failed to meet update rate! Try decreasing the rate, limiting "
-        // "sensor output frequency, or limiting the number of sensors.\n";
-    }
-  }
+  });
 }
 
 void RosFilter::setPoseCallback(
