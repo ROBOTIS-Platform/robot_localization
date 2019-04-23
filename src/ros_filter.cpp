@@ -124,19 +124,6 @@ void RosFilter::initialize()
         0.1,
         10));
 
-  // We may need to broadcast a different transform than
-  // the one we've already calculated.
-  // tf2::Transform map_odom_trans;
-  // tf2::Transform odom_base_link_trans;
-  // geometry_msgs::msg::TransformStamped map_odom_trans_msg;
-  // rclcpp::Time cur_time;
-  // rclcpp::Time last_diag_time = node_->now();
-
-  // Clear out the transforms
-  // world_base_link_trans_msg_.transform =
-    // tf2::toMsg(tf2::Transform::getIdentity());
-  // map_odom_trans_msg.transform = tf2::toMsg(tf2::Transform::getIdentity());
-
   // Publisher
   position_pub_ = node_->create_publisher<nav_msgs::msg::Odometry>("odometry/filtered");
   world_transform_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
@@ -160,11 +147,7 @@ void RosFilter::reset()
   previous_measurements_.clear();
   previous_measurement_covariances_.clear();
 
-  // Clear the measurement queue.
-  // This prevents us from immediately undoing our reset.
-  while (!measurement_queue_.empty() && rclcpp::ok()) {
-    measurement_queue_.pop();
-  }
+  clearMeasurementQueue();
 
   filter_state_history_.clear();
   measurement_history_.clear();
@@ -1045,27 +1028,19 @@ void RosFilter::loadParams()
     set_pose_callback);
 
   // Create a service for manually setting/resetting pose
-  // set_pose_service_ =
-  // node_->create_service<robot_localization::srv::SetPose>(
-  //  "set_pose", std::bind(&RosFilter::setPoseSrvCallback, this,
-  //  std::placeholders::_1, std::placeholders::_2));
-
   // Added setpose service callback
-  auto setPoseSrvCallback =
+  auto set_pose_srv_callback =
     [this](
-    std::shared_ptr<robot_localization::srv::SetPose::Request> request,
+    const std::shared_ptr<robot_localization::srv::SetPose::Request> request,
     std::shared_ptr<robot_localization::srv::SetPose::Response> response)
     -> bool {
-      geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg =
-        std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(request->pose);
-
-      setPoseCallback(msg);
+      setPoseSrvCallback(request, response);
       return true;
     };
 
   set_pose_service_ = node_->create_service<robot_localization::srv::SetPose>(
     "set_pose", 
-    setPoseSrvCallback);
+    set_pose_srv_callback);
 
   // Init the last last measurement time so we don't get a huge initial delta
   filter_->setLastMeasurementTime(node_->now());
@@ -1857,52 +1832,6 @@ void RosFilter::poseCallback(
 
 void RosFilter::run()
 {
-  // loadParams();
-
-  // if (print_diagnostics_)
-  // {
-		// diagnostic_updater_.add("Filter diagnostic updater", this,
-				// &RosFilter::aggregateDiagnostics);
-  // }
-
-  // // Set up the frequency diagnostic
-  // double minFrequency = frequency_ - 2;
-  // double maxFrequency = frequency_ + 2;
-  // diagnostic_updater::HeaderlessTopicDiagnostic freqDiag("odometry/filtered",
-			// diagnostic_updater_,
-			// diagnostic_updater::FrequencyStatusParam(&minFrequency,
-					// &maxFrequency, 0.1, 10));
-
-  // // We may need to broadcast a different transform than
-  // // the one we've already calculated.
-  // tf2::Transform map_odom_trans;
-  // tf2::Transform odom_base_link_trans;
-  // geometry_msgs::msg::TransformStamped map_odom_trans_msg;
-  // rclcpp::Time cur_time;
-  // rclcpp::Time last_diag_time = node_->now();
-
-  // // Clear out the transforms
-  // world_base_link_trans_msg_.transform =
-    // tf2::toMsg(tf2::Transform::getIdentity());
-  // map_odom_trans_msg.transform = tf2::toMsg(tf2::Transform::getIdentity());
-
-  // // Publisher
-  // rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr position_pub =
-    // node_->create_publisher<nav_msgs::msg::Odometry>("odometry/filtered");
-  // tf2_ros::TransformBroadcaster world_transform_broadcaster(node_);
-
-  // // Optional acceleration publisher
-  // rclcpp::Publisher<geometry_msgs::msg::AccelWithCovarianceStamped>::SharedPtr
-    // accel_pub;
-  // if (publish_acceleration_) {
-    // accel_pub =
-      // node_->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>(
-      // "accel/filtered");
-  // }
-
-  // rclcpp::Rate loop_rate(frequency_);
-
-  
   update_timer_ = this->create_wall_timer(
     std::chrono::duration<double>(1./frequency_),
     [this]()
@@ -2058,11 +1987,7 @@ void RosFilter::setPoseCallback(
   previous_measurements_.clear();
   previous_measurement_covariances_.clear();
 
-  // Clear out the measurement queue so that we don't immediately undo our
-  // reset.
-  while (!measurement_queue_.empty() && rclcpp::ok()) {
-    measurement_queue_.pop();
-  }
+  clearMeasurementQueue();
 
   filter_state_history_.clear();
   measurement_history_.clear();
@@ -2102,18 +2027,18 @@ void RosFilter::setPoseCallback(
   RF_DEBUG("\n------ /RosFilter::setPoseCallback ------\n");
 }
 
-// Commented as setPoseSrvCallback replaced with lamda function.
-/*
-  bool RosFilter::setPoseSrvCallback(
-    robot_localization::srv::SetPose::Request& request,
-    robot_localization::srv::SetPose::Response&)
-  {
-    geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg =
-  std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(request.pose);
-    setPoseCallback(msg);
 
-    return true;
-  }*/
+bool RosFilter::setPoseSrvCallback(
+  const std::shared_ptr<robot_localization::srv::SetPose::Request> request,
+  std::shared_ptr<robot_localization::srv::SetPose::Response> response)
+{
+  geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg =
+      std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(request->pose);
+
+  setPoseCallback(msg);
+
+  return true; 
+}
 
 void RosFilter::twistCallback(
   const geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr msg,
@@ -3164,5 +3089,16 @@ void RosFilter::clearExpiredHistory(const rclcpp::Time cutoff_time)
     popped_states <<
     " states from their respective queues." <<
     "\n---- /RosFilter::clearExpiredHistory ----\n");
+}
+
+void RosFilter::clearMeasurementQueue()
+{ 
+  // Clear the measurement queue.
+  // This prevents us from immediately undoing our reset.
+  while (!measurement_queue_.empty() && rclcpp::ok()) 
+  {
+    measurement_queue_.pop();
+  }
+  return;
 }
 }  // namespace robot_localization

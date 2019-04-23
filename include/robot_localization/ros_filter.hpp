@@ -72,12 +72,17 @@ struct CallbackData
 {
   CallbackData(
     const std::string & topic_name,
-    const std::vector<bool> & update_vector, const int update_sum,
-    const bool differential, const bool relative,
+    const std::vector<bool> & update_vector, 
+    const int update_sum,
+    const bool differential, 
+    const bool relative,
     const double rejection_threshold)
-  : topic_name_(topic_name), update_vector_(update_vector),
-    update_sum_(update_sum), differential_(differential),
-    relative_(relative), rejection_threshold_(rejection_threshold) {}
+  : topic_name_(topic_name), 
+    update_vector_(update_vector),
+    update_sum_(update_sum), 
+    differential_(differential),
+    relative_(relative), 
+    rejection_threshold_(rejection_threshold) {}
 
   std::string topic_name_;
   std::vector<bool> update_vector_;
@@ -137,8 +142,7 @@ public:
   //! @brief Callback method for receiving stamped control input
   //! @param[in] msg - The ROS stamped twist message to take in
   //!
-  void
-  controlStampedCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg);
+  void controlStampedCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg);
 
   //! @brief Adds a measurement to the queue of measurements to be processed
   //!
@@ -185,8 +189,7 @@ public:
   //! @param[out] message - The standard ROS acceleration message to be filled
   //! @return true if the filter is initialized, false otherwise
   //!
-  bool getFilteredAccelMessage(
-    geometry_msgs::msg::AccelWithCovarianceStamped & message);
+  bool getFilteredAccelMessage(geometry_msgs::msg::AccelWithCovarianceStamped & message);
 
   //! @brief Callback method for receiving all IMU messages
   //! @param[in] msg - The ROS IMU message to take in.
@@ -248,7 +251,8 @@ public:
   //!
   void poseCallback(
     const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg,
-    const CallbackData & callback_data, const std::string & target_frame,
+    const CallbackData & callback_data, 
+    const std::string & target_frame,
     const bool imu_data);
 
   //! @brief Main run method
@@ -267,11 +271,9 @@ public:
   //!
   //! @param[in] request - Custom service request with pose information
   //! @return true if successful, false if not
-
-  // Commented as setPoseSrvCallback replaced with lamda function.
-  /* bool setPoseSrvCallback(
-    robot_localization::srv::SetPose::Request& request,
-    robot_localization::srv::SetPose::Response&); */
+  bool setPoseSrvCallback(
+    const std::shared_ptr<robot_localization::srv::SetPose::Request> request,
+    std::shared_ptr<robot_localization::srv::SetPose::Response> response);
 
   //! @brief Callback method for receiving all twist messages
   //! @param[in] msg - The ROS stamped twist with covariance message to take in.
@@ -282,6 +284,12 @@ public:
   void twistCallback(
     const geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr msg,
     const CallbackData & callback_data, const std::string & target_frame);
+
+  //! @brief Validates filter outputs for NaNs and Infinite values
+  //! @param[out] message - The standard ROS odometry message to be validated
+  //! @return true if the filter output is valid, false otherwise
+  //!
+  bool validateFilterOutput(const nav_msgs::msg::Odometry &message);
 
 protected:
   //! @brief Finds the latest filter state before the given timestamp and makes
@@ -311,6 +319,10 @@ protected:
   //!
   void clearExpiredHistory(const rclcpp::Time cutoff_time);
 
+  //! @brief Clears measurement queue
+  //!
+  void clearMeasurementQueue();
+
   //! @brief Adds a diagnostic message to the accumulating map and updates the
   //! error level
   //! @param[in] error_level - The error level of the diagnostic
@@ -321,14 +333,15 @@ protected:
   //! static
   //!
   void addDiagnostic(
-    const int error_level, const std::string & topic_and_class,
-    const std::string & message, const bool is_static);
+    const int error_level, 
+    const std::string & topic_and_class,
+    const std::string & message, 
+    const bool is_static);
 
   //! @brief Aggregates all diagnostics so they can be published
   //! @param[in] wrapper - The diagnostic status wrapper to update
   //!
-  void aggregateDiagnostics(diagnostic_updater::DiagnosticStatusWrapper
-   &wrapper);
+  void aggregateDiagnostics(diagnostic_updater::DiagnosticStatusWrapper &wrapper);
 
   //! @brief Utility method for copying covariances from ROS covariance arrays
   //! to Eigen matrices
@@ -350,7 +363,8 @@ protected:
     Eigen::MatrixXd & covariance_out,
     const std::string & topic_name,
     const std::vector<bool> & update_vector,
-    const size_t offset, const size_t dimension);
+    const size_t offset, 
+    const size_t dimension);
 
   //! @brief Utility method for copying covariances from Eigen matrices to ROS
   //! covariance arrays
@@ -361,7 +375,8 @@ protected:
   //!
   void copyCovariance(
     const Eigen::MatrixXd & covariance_in,
-    double * covariance_out, const size_t dimension);
+    double * covariance_out, 
+    const size_t dimension);
 
   //! @brief Loads fusion settings from the config file
   //! @param[in] topic_name - The name of the topic for which to load settings
