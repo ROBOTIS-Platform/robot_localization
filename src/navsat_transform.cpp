@@ -713,7 +713,7 @@ bool NavSatTransform::prepareGpsOdometry(nav_msgs::msg::Odometry & gps_odom)
 
   if (transform_good_ && gps_updated_ && odom_updated_) 
   {
-    RCLCPP_INFO(node_->get_logger(), "prepareGpsOdometry()");
+    RCLCPP_INFO_ONCE(node_->get_logger(), "prepareGpsOdometry()");
     tf2::Transform transformed_utm_gps;
 
     transformed_utm_gps.mult(utm_world_transform_, latest_utm_pose_);
