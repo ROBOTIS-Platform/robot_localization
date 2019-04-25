@@ -1904,6 +1904,11 @@ void RosFilter::run()
             tf2::Transform map_odom_trans;
             map_odom_trans.mult(world_base_link_trans, base_link_odom_trans);
 
+            // std::stringstream ss1;
+            // ss1 << "map_odom_trans is \n" << map_odom_trans;
+            // RCLCPP_INFO(node_->get_logger(), "%s", ss1.str().c_str());
+
+
             geometry_msgs::msg::TransformStamped map_odom_trans_msg;
             map_odom_trans_msg.transform = tf2::toMsg(map_odom_trans);
             map_odom_trans_msg.header.stamp = tf_time_offset_ + filtered_position.header.stamp;
