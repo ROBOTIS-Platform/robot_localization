@@ -21,8 +21,8 @@
   <depend>eigen</depend>
   <depend>geographic_msgs</depend>
   <depend>geometry_msgs</depend>
-  <depend>diagnostic_msgs</depend>
-  <depend>diagnostic_updater</depend>
+  <!--<depend>diagnostic_msgs</depend>-->
+  <!--<depend>diagnostic_updater</depend>-->
   <depend>nav_msgs</depend>
   <!--<build_depend>rmw_implementation</build_depend>-->
   <depend>sensor_msgs</depend>
