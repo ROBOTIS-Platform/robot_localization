@@ -82,6 +82,8 @@ NavSatTransform::NavSatTransform(std::string node_name)
 {
   node_ = std::shared_ptr<::rclcpp::Node>(this, [](::rclcpp::Node *) {});
 
+  auto qos = rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_default));
+
   latest_utm_covariance_.resize(POSE_SIZE, POSE_SIZE);
   latest_odom_covariance_.resize(POSE_SIZE, POSE_SIZE);
 
@@ -90,17 +92,29 @@ NavSatTransform::NavSatTransform(std::string node_name)
   double transform_timeout = 0.0;
 
   // Load the parameters we need
-  node_->get_parameter_or("magnetic_declination_radians", magnetic_declination_, 0.0);
-  node_->get_parameter_or("yaw_offset", yaw_offset_, 0.0);
-  node_->get_parameter_or("broadcast_utm_transform", broadcast_utm_transform_, false);
-  node_->get_parameter_or("broadcast_utm_transform_as_parent_frame", broadcast_utm_transform_as_parent_frame_, false);
-  node_->get_parameter_or("zero_altitude", zero_altitude_, false);
-  node_->get_parameter_or("publish_filtered_gps", publish_gps_, false);
-  node_->get_parameter_or("use_odometry_yaw", use_odometry_yaw_, false);
-  node_->get_parameter_or("wait_for_datum", use_manual_datum_, false);
-  node_->get_parameter_or("frequency", frequency, 10.0);
-  node_->get_parameter_or("delay", delay, 0.0);
-  node_->get_parameter_or("transform_timeout", transform_timeout, 0.0);
+  node_->declare_parameter("magnetic_declination_radians", rclcpp::ParameterValue(0.0));
+  node_->declare_parameter("yaw_offset", rclcpp::ParameterValue(0.0));
+  node_->declare_parameter("broadcast_utm_transform", rclcpp::ParameterValue(false));
+  node_->declare_parameter("broadcast_utm_transform_as_parent_frame", rclcpp::ParameterValue(false));
+  node_->declare_parameter("zero_altitude", rclcpp::ParameterValue(false));
+  node_->declare_parameter("publish_filtered_gps", rclcpp::ParameterValue(false));
+  node_->declare_parameter("use_odometry_yaw", rclcpp::ParameterValue(false));
+  node_->declare_parameter("wait_for_datum", rclcpp::ParameterValue(false));
+  node_->declare_parameter("frequency", rclcpp::ParameterValue(10.0));
+  node_->declare_parameter("delay", rclcpp::ParameterValue(0.0));
+  node_->declare_parameter("transform_timeout", rclcpp::ParameterValue(0.0));
+
+  node_->get_parameter("magnetic_declination_radians", magnetic_declination_);
+  node_->get_parameter("yaw_offset", yaw_offset_);
+  node_->get_parameter("broadcast_utm_transform", broadcast_utm_transform_);
+  node_->get_parameter("broadcast_utm_transform_as_parent_frame", broadcast_utm_transform_as_parent_frame_);
+  node_->get_parameter("zero_altitude", zero_altitude_);
+  node_->get_parameter("publish_filtered_gps", publish_gps_);
+  node_->get_parameter("use_odometry_yaw", use_odometry_yaw_);
+  node_->get_parameter("wait_for_datum", use_manual_datum_);
+  node_->get_parameter("frequency", frequency);
+  node_->get_parameter("delay", delay);
+  node_->get_parameter("transform_timeout", transform_timeout);
   //transform_timeout_ = rclcpp::durationFromSec(transform_timeout);
   transform_timeout_ = rclcpp::Duration(filter_utilities::secToNanosec(transform_timeout));
 
@@ -154,6 +168,7 @@ NavSatTransform::NavSatTransform(std::string node_name)
 
   odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
     "odometry/filtered",
+    qos,
     odom_callback);
 
   auto gps_callback = 
@@ -164,6 +179,7 @@ NavSatTransform::NavSatTransform(std::string node_name)
 
   gps_sub_ = node_->create_subscription<sensor_msgs::msg::NavSatFix>(
     "gps/fix", 
+    qos,
     gps_callback);
 
   auto imu_callback = 
@@ -176,14 +192,15 @@ NavSatTransform::NavSatTransform(std::string node_name)
   {
     imu_sub_ = node_->create_subscription<sensor_msgs::msg::Imu>(
       "imu", 
+      qos,
       imu_callback);
   }
 
-  gps_odom_pub_ = node_->create_publisher<nav_msgs::msg::Odometry>("odometry/gps");
+  gps_odom_pub_ = node_->create_publisher<nav_msgs::msg::Odometry>("odometry/gps", qos);
 
   if (publish_gps_) 
   {
-    filtered_gps_pub_ = node_->create_publisher<sensor_msgs::msg::NavSatFix>("gps/filtered");
+    filtered_gps_pub_ = node_->create_publisher<sensor_msgs::msg::NavSatFix>("gps/filtered", qos);
   }
 
   // Sleep for the parameterized amount of time, to give

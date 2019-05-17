@@ -671,6 +671,8 @@ protected:
   //!
   rclcpp::Node::SharedPtr node_;
 
+  rclcpp::QoS qos_;
+
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr position_pub_;
   rclcpp::Publisher<geometry_msgs::msg::AccelWithCovarianceStamped>::SharedPtr accel_pub_;
   std::shared_ptr<tf2_ros::TransformBroadcaster> world_transform_broadcaster_;

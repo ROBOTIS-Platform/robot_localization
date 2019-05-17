@@ -75,7 +75,8 @@ RosFilter::RosFilter(
   publish_acceleration_(false), 
   two_d_mode_(false),
   use_control_(false),
-  smooth_lagged_data_(false) 
+  smooth_lagged_data_(false),
+  qos_(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_default))
 {
   node_ = std::shared_ptr<::rclcpp::Node>(this, [](::rclcpp::Node *) {});
 
@@ -125,13 +126,13 @@ void RosFilter::initialize()
         10));
 
   // Publisher
-  position_pub_ = node_->create_publisher<nav_msgs::msg::Odometry>("odometry/filtered");
+  position_pub_ = node_->create_publisher<nav_msgs::msg::Odometry>("odometry/filtered", qos_);
   world_transform_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
 
   // Optional acceleration publisher
   if (publish_acceleration_) {
     accel_pub_ =
-      node_->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>("accel/filtered");
+      node_->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>("accel/filtered", qos_);
   }
 
   last_diag_time_ = node_->now();
@@ -684,6 +685,36 @@ void RosFilter::loadParams()
   twist_var_counts[StateMemberVpitch] = 0;
   twist_var_counts[StateMemberVyaw] = 0;
 
+  // Declare parameters
+  node_->declare_parameter("print_diagnostics");
+  node_->declare_parameter("gravitational_acceleration");
+  node_->declare_parameter("debug");
+  node_->declare_parameter("debug_out_file");
+  node_->declare_parameter("map_frame");
+  node_->declare_parameter("odom_frame");
+  node_->declare_parameter("base_link_frame");
+  node_->declare_parameter("world_frame");
+  node_->declare_parameter("tf_prefix");
+  node_->declare_parameter("publish_tf");
+  node_->declare_parameter("publish_acceleration");
+  node_->declare_parameter("transform_time_offset");
+  node_->declare_parameter("transform_timeout");
+  node_->declare_parameter("frequency");
+  node_->declare_parameter("sensor_timeout");
+  node_->declare_parameter("two_d_mode");
+  node_->declare_parameter("smooth_lagged_data");
+  node_->declare_parameter("history_length");
+  node_->declare_parameter("reset_on_time_jump");
+  node_->declare_parameter("use_control");
+  node_->declare_parameter("control_timeout");
+  node_->declare_parameter("control_config");
+  node_->declare_parameter("acceleration_limits");
+  node_->declare_parameter("acceleration_gains");
+  node_->declare_parameter("deceleration_limits");
+  node_->declare_parameter("deceleration_gains");
+  node_->declare_parameter("dynamic_process_noise_covariance");
+  node_->declare_parameter("initial_state");
+
   // Determine if we'll be printing diagnostic information
   node_->get_parameter_or("print_diagnostics", print_diagnostics_, false);
 
@@ -1058,16 +1089,19 @@ void RosFilter::loadParams()
     ss << "odom" << topic_ind++;
     std::string odom_topic_name = ss.str();
     std::string odom_topic;
+    node_->declare_parameter(odom_topic_name);
     more_params = node_->get_parameter(odom_topic_name, odom_topic);
 
     if (more_params) {
       // Determine if we want to integrate this sensor differentially
       bool differential = false;
+      node_->declare_parameter(odom_topic_name + std::string("_differential"));
       node_->get_parameter(odom_topic_name + std::string("_differential"),
         differential);
 
       // Determine if we want to integrate this sensor relatively
       bool relative = false;
+      node_->declare_parameter(odom_topic_name + std::string("_relative"));
       node_->get_parameter(odom_topic_name + std::string("_relative"));
 
       if (relative && differential) {
@@ -1087,12 +1121,17 @@ void RosFilter::loadParams()
 
       // Check for pose rejection threshold
       double pose_mahalanobis_thresh = std::numeric_limits<double>::max();
+      node_->declare_parameter(odom_topic_name +
+        std::string("_pose_rejection_threshold"));
+
       node_->get_parameter(odom_topic_name +
         std::string("_pose_rejection_threshold"),
         pose_mahalanobis_thresh);
 
       // Check for twist rejection threshold
       double twist_mahalanobis_thresh = std::numeric_limits<double>::max();
+      node_->declare_parameter(odom_topic_name +
+        std::string("_twist_rejection_threshold"));
       node_->get_parameter(odom_topic_name +
         std::string("_twist_rejection_threshold"),
         twist_mahalanobis_thresh);
@@ -1130,7 +1169,7 @@ void RosFilter::loadParams()
             pose_callback_data, twist_callback_data);
 
         topic_subs_.push_back(
-          node_->create_subscription<nav_msgs::msg::Odometry>(odom_topic, odom_callback));
+          node_->create_subscription<nav_msgs::msg::Odometry>(odom_topic, qos_, odom_callback));
       } else {
 
         std::stringstream stream;
@@ -1196,15 +1235,18 @@ void RosFilter::loadParams()
     ss << "pose" << topic_ind++;
     std::string pose_topic_name = ss.str();
     std::string pose_topic;
+    node_->declare_parameter(pose_topic_name);
     more_params = node_->get_parameter(pose_topic_name, pose_topic);
 
     if (more_params) {
       bool differential = false;
+      node_->declare_parameter(pose_topic_name + std::string("_differential"));
       node_->get_parameter(pose_topic_name + std::string("_differential"),
         differential);
 
       // Determine if we want to integrate this sensor relatively
       bool relative = false;
+      node_->declare_parameter(pose_topic_name + std::string("_relative"));
       node_->get_parameter(pose_topic_name + std::string("_relative"),
         relative);
 
@@ -1223,6 +1265,7 @@ void RosFilter::loadParams()
 
       // Check for pose rejection threshold
       double pose_mahalanobis_thresh = std::numeric_limits<double>::max();
+      node_->declare_parameter(pose_topic_name + std::string("_rejection_threshold"));
       node_->get_parameter(pose_topic_name +
         std::string("_rejection_threshold"),
         pose_mahalanobis_thresh);
@@ -1252,7 +1295,7 @@ void RosFilter::loadParams()
 
         topic_subs_.push_back(node_->create_subscription<
             geometry_msgs::msg::PoseWithCovarianceStamped>(
-            pose_topic, pose_callback));
+            pose_topic, qos_, pose_callback));
 
         if (differential) {
           twist_var_counts[StateMemberVx] += pose_update_vec[StateMemberX];
@@ -1302,11 +1345,14 @@ void RosFilter::loadParams()
     ss << "twist" << topic_ind++;
     std::string twist_topic_name = ss.str();
     std::string twist_topic;
+    node_->declare_parameter(twist_topic_name);
     more_params = node_->get_parameter(twist_topic_name, twist_topic);
 
     if (more_params) {
       // Check for twist rejection threshold
       double twist_mahalanobis_thresh = std::numeric_limits<double>::max();
+      node_->declare_parameter(twist_topic_name +
+        std::string("_rejection_threshold"));
       node_->get_parameter(twist_topic_name +
         std::string("_rejection_threshold"),
         twist_mahalanobis_thresh);
@@ -1333,7 +1379,7 @@ void RosFilter::loadParams()
 
         topic_subs_.push_back(node_->create_subscription<
             geometry_msgs::msg::TwistWithCovarianceStamped>(
-            twist_topic, twist_callback));
+            twist_topic, qos_, twist_callback));
 
         twist_var_counts[StateMemberVx] += twist_update_vec[StateMemberVx];
         twist_var_counts[StateMemberVy] += twist_update_vec[StateMemberVy];
@@ -1369,15 +1415,18 @@ void RosFilter::loadParams()
     ss << "imu" << topic_ind++;
     std::string imu_topic_name = ss.str();
     std::string imu_topic;
+    node_->declare_parameter(imu_topic_name);
     more_params = node_->get_parameter(imu_topic_name, imu_topic);
 
     if (more_params) {
       bool differential = false;
+      node_->declare_parameter(imu_topic_name + std::string("_differential"));
       node_->get_parameter(imu_topic_name + std::string("_differential"),
         differential);
 
       // Determine if we want to integrate this sensor relatively
       bool relative = false;
+      node_->declare_parameter(imu_topic_name + std::string("_relative"));
       node_->get_parameter(imu_topic_name + std::string("_relative"), relative);
 
       if (relative && differential) {
@@ -1395,6 +1444,7 @@ void RosFilter::loadParams()
 
       // Check for pose rejection threshold
       double pose_mahalanobis_thresh = std::numeric_limits<double>::max();
+      node_->declare_parameter(imu_topic_name + std::string("_pose_rejection_threshold"));
       node_->get_parameter(imu_topic_name +
         std::string("_pose_rejection_threshold"),
         pose_mahalanobis_thresh);
@@ -1403,16 +1453,21 @@ void RosFilter::loadParams()
       double twist_mahalanobis_thresh = std::numeric_limits<double>::max();
       std::string imu_twist_rejection_name =
         imu_topic_name + std::string("_twist_rejection_threshold");
+      node_->declare_parameter(imu_twist_rejection_name);
       node_->get_parameter(imu_twist_rejection_name, twist_mahalanobis_thresh);
 
       // Check for acceleration rejection threshold
       double accel_mahalanobis_thresh = std::numeric_limits<double>::max();
+      node_->declare_parameter(imu_topic_name +
+        std::string("_linear_acceleration_rejection_threshold"));
       node_->get_parameter(
         imu_topic_name +
         std::string("_linear_acceleration_rejection_threshold"),
         accel_mahalanobis_thresh);
 
       bool remove_grav_acc = false;
+      node_->declare_parameter(imu_topic_name +
+        std::string("_remove_gravitational_acceleration"));
       node_->get_parameter(imu_topic_name +
         "_remove_gravitational_acceleration",
         remove_grav_acc);
@@ -1498,7 +1553,7 @@ void RosFilter::loadParams()
             twist_callback_data, accel_callback_data);
 
         topic_subs_.push_back(node_->create_subscription<sensor_msgs::msg::Imu>(
-            imu_topic, imu_callback));
+            imu_topic, qos_, imu_callback));
       } else {
         RCLCPP_ERROR(node_->get_logger(), 
             "Warning: %s is listed as an input topic, but all its update variables are false", 
@@ -1645,6 +1700,7 @@ void RosFilter::loadParams()
   process_noise_covariance.setZero();
   std::vector<double> process_noise_covar_flat;
 
+  node_->declare_parameter("process_noise_covariance");
   if (node_->get_parameter("process_noise_covariance", process_noise_covar_flat))
   {
     assert(process_noise_covar_flat.size() == STATE_SIZE * STATE_SIZE);
@@ -1668,6 +1724,7 @@ void RosFilter::loadParams()
   initial_estimate_error_covariance.setZero();
   std::vector<double> estimate_error_covar_flat;
 
+  node_->declare_parameter("initial_estimate_covariance");
   if (node_->get_parameter("initial_estimate_covariance", estimate_error_covar_flat))
   {
     assert(estimate_error_covar_flat.size() == STATE_SIZE * STATE_SIZE);
@@ -2277,9 +2334,10 @@ void RosFilter::copyCovariance(
 std::vector<bool> RosFilter::loadUpdateConfig(const std::string & topic_name)
 {
   std::vector<bool> update_vector(STATE_SIZE, 0);
-  const std::string topc_config_name = topic_name + "_config";
+  const std::string topic_config_name = topic_name + "_config";
 
-  node_->get_parameter(topc_config_name, update_vector);
+  node_->declare_parameter(topic_config_name);
+  node_->get_parameter(topic_config_name, update_vector);
 
   return update_vector;
 }
