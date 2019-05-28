@@ -1056,6 +1056,7 @@ void RosFilter::loadParams()
   set_pose_sub_ =
     node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "set_pose",
+    qos_,
     set_pose_callback);
 
   // Create a service for manually setting/resetting pose
@@ -1639,6 +1640,7 @@ void RosFilter::loadParams()
 
     control_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
       "cmd_vel",
+      qos_,
       control_callback);
   }
 
