@@ -53,15 +53,14 @@
 namespace robot_localization
 {
 RosFilter::RosFilter(
-  // rclcpp::Node::SharedPtr node,
   std::string node_name,
   robot_localization::FilterBase::UniquePtr & filter)
 : Node(node_name),
   filter_(std::move(filter)),
   static_diag_error_level_(diagnostic_msgs::msg::DiagnosticStatus::OK),
   dynamic_diag_error_level_(diagnostic_msgs::msg::DiagnosticStatus::OK),
-  tf_buffer_(this->get_clock()), // Added this line to fix the build on crystal
-  tf_listener_(tf_buffer_),
+  tf_buffer_(this->get_clock()),
+  tf_listener_(tf_buffer_, rclcpp::Node::make_shared("tramsform_listener_impl", node_name)),
   frequency_(30.0),
   history_length_(0),
   last_set_pose_time_(0, 0, RCL_ROS_TIME),
@@ -76,6 +75,7 @@ RosFilter::RosFilter(
   two_d_mode_(false),
   use_control_(false),
   smooth_lagged_data_(false),
+  diagnostic_updater_(this->create_sub_node("diagnostic_update")),
   qos_(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_default))
 {
   node_ = std::shared_ptr<::rclcpp::Node>(this, [](::rclcpp::Node *) {});
@@ -130,7 +130,8 @@ void RosFilter::initialize()
   world_transform_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
 
   // Optional acceleration publisher
-  if (publish_acceleration_) {
+  if (publish_acceleration_) 
+  {
     accel_pub_ =
       node_->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>("accel/filtered", qos_);
   }
@@ -685,44 +686,17 @@ void RosFilter::loadParams()
   twist_var_counts[StateMemberVpitch] = 0;
   twist_var_counts[StateMemberVyaw] = 0;
 
-  // Declare parameters
-  node_->declare_parameter("print_diagnostics");
-  node_->declare_parameter("gravitational_acceleration");
-  node_->declare_parameter("debug");
-  node_->declare_parameter("debug_out_file");
-  node_->declare_parameter("map_frame");
-  node_->declare_parameter("odom_frame");
-  node_->declare_parameter("base_link_frame");
-  node_->declare_parameter("world_frame");
-  node_->declare_parameter("tf_prefix");
-  node_->declare_parameter("publish_tf");
-  node_->declare_parameter("publish_acceleration");
-  node_->declare_parameter("transform_time_offset");
-  node_->declare_parameter("transform_timeout");
-  node_->declare_parameter("frequency");
-  node_->declare_parameter("sensor_timeout");
-  node_->declare_parameter("two_d_mode");
-  node_->declare_parameter("smooth_lagged_data");
-  node_->declare_parameter("history_length");
-  node_->declare_parameter("reset_on_time_jump");
-  node_->declare_parameter("use_control");
-  node_->declare_parameter("control_timeout");
-  node_->declare_parameter("control_config");
-  node_->declare_parameter("acceleration_limits");
-  node_->declare_parameter("acceleration_gains");
-  node_->declare_parameter("deceleration_limits");
-  node_->declare_parameter("deceleration_gains");
-  node_->declare_parameter("dynamic_process_noise_covariance");
-  node_->declare_parameter("initial_state");
-
   // Determine if we'll be printing diagnostic information
+  node_->declare_parameter("print_diagnostics");
   node_->get_parameter_or("print_diagnostics", print_diagnostics_, false);
 
   // Check for custom gravitational acceleration value
+  node_->declare_parameter("gravitational_acceleration");
   node_->get_parameter("gravitational_acceleration", gravitational_acceleration_);
 
   // Grab the debug param. If true, the node will produce a LOT of output.
   bool debug = false;
+  node_->declare_parameter("debug");
   node_->get_parameter_or("debug", debug, false);
 
   if (debug) {
@@ -730,6 +704,7 @@ void RosFilter::loadParams()
 
     try {
       debug_out_file = "robot_localization_debug.txt";
+      node_->declare_parameter("debug_out_file");
       node_->get_parameter("debug_out_file", debug_out_file);
       debug_stream_.open(debug_out_file.c_str());
 
@@ -756,6 +731,9 @@ void RosFilter::loadParams()
 
   // These params specify the name of the robot's body frame (typically
   // base_link) and odometry frame (typically odom)
+  node_->declare_parameter("map_frame");
+  node_->declare_parameter("odom_frame");
+  node_->declare_parameter("base_link_frame");
   node_->get_parameter_or("map_frame", map_frame_id_, std::string("map"));
   node_->get_parameter_or("odom_frame", odom_frame_id_, std::string("odom"));
   node_->get_parameter_or("base_link_frame", base_link_frame_id_, std::string("base_link"));
@@ -785,6 +763,7 @@ void RosFilter::loadParams()
    *
    * The default is the latter behavior (broadcast of odom->base_link).
    */
+  node_->declare_parameter("world_frame");
   node_->get_parameter_or("world_frame", world_frame_id_, odom_frame_id_);
 
   if (map_frame_id_ == odom_frame_id_ ||
@@ -803,6 +782,7 @@ void RosFilter::loadParams()
   // Try to resolve tf_prefix
   std::string tf_prefix = "";
   std::string tf_prefix_path = "";
+  node_->declare_parameter("tf_prefix");
   if (node_->get_parameter("tf_prefix", tf_prefix_path)) {
     // Append the tf prefix in a tf2-friendly manner
     filter_utilities::appendPrefix(tf_prefix, map_frame_id_);
@@ -812,38 +792,47 @@ void RosFilter::loadParams()
   }
 
   // Whether we're publshing the world_frame->base_link_frame transform
+  node_->declare_parameter("publish_tf");
   node_->get_parameter_or("publish_tf", publish_transform_, true);
 
   // Whether we're publishing the acceleration state transform
+  node_->declare_parameter("publish_acceleration");
   node_->get_parameter_or("publish_acceleration", publish_acceleration_, false);
 
   // Transform future dating
   double offset_tmp = 0.0;
+  node_->declare_parameter("transform_time_offset");
   node_->get_parameter_or("transform_time_offset", offset_tmp, 0.0);
   tf_time_offset_ =
     rclcpp::Duration(filter_utilities::secToNanosec(offset_tmp));
 
   // Transform timeout
   double timeout_tmp = 0.0;
+  node_->declare_parameter("transform_timeout");
   node_->get_parameter_or("transform_timeout", timeout_tmp, 0.0);
   tf_timeout_ = rclcpp::Duration(filter_utilities::secToNanosec(timeout_tmp));
 
   // Update frequency and sensor timeout
+  node_->declare_parameter("frequency");
   node_->get_parameter_or("frequency", frequency_, 30.0);
 
   double sensor_timeout = 1.0 / frequency_;
+  node_->declare_parameter("sensor_timeout");
   node_->get_parameter("sensor_timeout", sensor_timeout);
   filter_->setSensorTimeout(rclcpp::Duration(filter_utilities::secToNanosec(sensor_timeout)));
 
   // Determine if we're in 2D mode
   two_d_mode_ = false;
+  node_->declare_parameter("two_d_mode");
   node_->get_parameter_or("two_d_mode", two_d_mode_, false);
 
   // Smoothing window size
   smooth_lagged_data_ = false;
+  node_->declare_parameter("smooth_lagged_data");
   node_->get_parameter_or("smooth_lagged_data", smooth_lagged_data_, false);
 
   double history_length_double = 0.0;
+  node_->declare_parameter("history_length");
   node_->get_parameter_or("history_length", history_length_double, 0.0);
 
   if (!smooth_lagged_data_ && std::abs(history_length_double) > 0) {
@@ -869,6 +858,7 @@ void RosFilter::loadParams()
 
   // Wether we reset filter on jump back in time
   reset_on_time_jump_ = false;
+  node_->declare_parameter("reset_on_time_jump");
   node_->get_parameter_or("reset_on_time_jump", reset_on_time_jump_, false);
 
   // Determine if we're using a control term
@@ -879,10 +869,13 @@ void RosFilter::loadParams()
   std::vector<double> deceleration_limits(TWIST_SIZE, 1.0);
   std::vector<double> deceleration_gains(TWIST_SIZE, 1.0);
 
+  node_->declare_parameter("use_control");
+  node_->declare_parameter("control_timeout");
   node_->get_parameter_or("use_control", use_control_, false);
   node_->get_parameter_or("control_timeout", control_timeout, 0.0);
 
   if (use_control_) {
+    node_->declare_parameter("control_config");
     if (node_->get_parameter("control_config", control_update_vector)) {
       if (control_update_vector.size() != TWIST_SIZE) {
         RCLCPP_ERROR(node_->get_logger(), 
@@ -906,6 +899,7 @@ void RosFilter::loadParams()
       use_control_ = false;
     }
 
+    node_->declare_parameter("acceleration_limits");
     if (node_->get_parameter("acceleration_limits", acceleration_limits)) {
       if (acceleration_limits.size() != TWIST_SIZE) {
         RCLCPP_ERROR(node_->get_logger(), 
@@ -928,6 +922,7 @@ void RosFilter::loadParams()
         // "missing. Will use default values.\n";
     }
 
+    node_->declare_parameter("acceleration_gains");
     if (node_->get_parameter("acceleration_gains", acceleration_gains)) {
       const int size = acceleration_gains.size();
       if (size != TWIST_SIZE) {
@@ -946,6 +941,7 @@ void RosFilter::loadParams()
       }
     }
 
+    node_->declare_parameter("deceleration_limits");
     if (node_->get_parameter("deceleration_limits", deceleration_limits)) {
       if (deceleration_limits.size() != TWIST_SIZE) {
         RCLCPP_ERROR(node_->get_logger(), 
@@ -969,7 +965,8 @@ void RosFilter::loadParams()
       
       deceleration_limits = acceleration_limits;
     }
-
+   
+    node_->declare_parameter("deceleration_gains");
     if (node_->get_parameter("deceleration_gains", deceleration_gains)) {
       const int size = deceleration_gains.size();
       if (size != TWIST_SIZE) {
@@ -996,12 +993,15 @@ void RosFilter::loadParams()
   }
 
   bool dynamic_process_noise_covariance = false;
+
+  node_->declare_parameter("dynamic_process_noise_covariance");
   node_->get_parameter("dynamic_process_noise_covariance",
     dynamic_process_noise_covariance);
   filter_->setUseDynamicProcessNoiseCovariance(
     dynamic_process_noise_covariance);
 
   std::vector<double> initial_state(STATE_SIZE, 0.0);
+  node_->declare_parameter("initial_state");
   if (node_->get_parameter("initial_state", initial_state)) {
     if (initial_state.size() != STATE_SIZE) {
       RCLCPP_ERROR(node_->get_logger(), 
@@ -1963,9 +1963,9 @@ void RosFilter::run()
             tf2::Transform map_odom_trans;
             map_odom_trans.mult(world_base_link_trans, base_link_odom_trans);
 
-            // std::stringstream ss1;
-            // ss1 << "map_odom_trans is \n" << map_odom_trans;
-            // RCLCPP_INFO(node_->get_logger(), "%s", ss1.str().c_str());
+            std::stringstream ss1;
+            ss1 << "map_odom_trans is \n" << map_odom_trans;
+            RCLCPP_DEBUG(node_->get_logger(), "%s", ss1.str().c_str());
 
 
             geometry_msgs::msg::TransformStamped map_odom_trans_msg;
@@ -1981,11 +1981,6 @@ void RosFilter::run()
             RCLCPP_ERROR(node_->get_logger(), "Could not obtain transform from %s -> %s",
                 odom_frame_id_.c_str(),
                 base_link_frame_id_.c_str());
-
-            // ROS_ERROR_STREAM_DELAYED_THROTTLE(5.0, "Could not obtain
-            // transform from "
-            //                                  << odom_frame_id_ << "->" <<
-            //                                  base_link_frame_id_);
           }
         } 
         else 
@@ -1994,9 +1989,6 @@ void RosFilter::run()
               filtered_position.header.frame_id.c_str(), 
               map_frame_id_.c_str(), 
               odom_frame_id_.c_str());
-          // std::cerr << "Odometry message frame_id was " <<
-            // filtered_position.header.frame_id << ", expected " <<
-            // map_frame_id_ << " or " << odom_frame_id_ << "\n";
         }
       }
 

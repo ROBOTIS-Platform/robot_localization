@@ -671,17 +671,40 @@ protected:
   //!
   rclcpp::Node::SharedPtr node_;
 
+  //! @brief QoS
+  //!
   rclcpp::QoS qos_;
 
+  //! @brief Publisher to publish odometry/filtered
+  //!
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr position_pub_;
+  
+  //! @brief Publisher to publish acceleration with covariance
+  //!
   rclcpp::Publisher<geometry_msgs::msg::AccelWithCovarianceStamped>::SharedPtr accel_pub_;
+
+  //! @brief Transform broadcaster to broadcast world transform
+  //!
   std::shared_ptr<tf2_ros::TransformBroadcaster> world_transform_broadcaster_;
 
+  //! @brief Timer
+  //!
   rclcpp::TimerBase::SharedPtr update_timer_;
 
+  //! @brief Minimum frequency diagnostic
+  //!
   double minFrequency_;
+
+  //! @brief Maximum frequency diagnostic
+  //!
   double maxFrequency_;
+
+  //! @brief Diagnostic updater
+  //!
   std::unique_ptr<diagnostic_updater::HeaderlessTopicDiagnostic> freq_diag_;
+
+  //! @brief Time
+  //!
   rclcpp::Time last_diag_time_;
 
   //! @brief Transform buffer for managing coordinate transforms
