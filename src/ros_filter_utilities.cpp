@@ -38,6 +38,8 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 
+#include <rcutils/logging_macros.h>
+
 #include <string>
 #include <vector>
 
@@ -140,15 +142,17 @@ bool lookupTransformSafe(
         .transform,
         target_frame_trans);
 
-      // ROS_WARN_STREAM_THROTTLE(2.0, "Transform from " << source_frame << " to
-      // " << target_frame <<
-      //                              " was unavailable for the time requested.
-      //                              Using latest instead.\n");
+      RCUTILS_LOG_WARN_THROTTLE(RCUTILS_STEADY_TIME, 2000, 
+        "Transform from %s to %s was unavailable for the time requested. Using latest instead.", 
+        source_frame.c_str(),
+        target_frame.c_str());
+        
     } catch (tf2::TransformException & ex) {
-      // ROS_WARN_STREAM_THROTTLE(2.0, "Could not obtain transform from " <<
-      // source_frame <<
-      //                              " to " << target_frame << ". Error was "
-      //                              << ex.what() << "\n");
+      RCUTILS_LOG_WARN_THROTTLE(RCUTILS_STEADY_TIME, 2000, 
+      "Could not obtain transform from %s to %s . Error was %s",
+        source_frame.c_str(),
+        target_frame.c_str(),
+        ex.what());
 
       retVal = false;
     }
