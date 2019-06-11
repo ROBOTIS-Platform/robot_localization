@@ -102,7 +102,7 @@ int main(int argc, char ** argv)
   }
   auto node = std::make_shared<robot_localization::RosFilter>(node_name, filter);
 
-  RCLCPP_INFO(node->get_logger(), "Spin!!");
+  RCLCPP_INFO(node->get_logger(), "Run!!");
   rclcpp::spin(node);
 
   rclcpp::shutdown();
