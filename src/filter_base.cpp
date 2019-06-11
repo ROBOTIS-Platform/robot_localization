@@ -320,6 +320,7 @@ void FilterBase::setProcessNoiseCovariance(
   const Eigen::MatrixXd & process_noise_covariance)
 {
   process_noise_covariance_ = process_noise_covariance;
+  dynamic_process_noise_covariance_ = process_noise_covariance;
 }
 
 void FilterBase::setSensorTimeout(const rclcpp::Duration & sensor_timeout)

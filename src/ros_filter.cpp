@@ -42,6 +42,8 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+#include <rcutils/logging_macros.h>
+
 #include <algorithm>
 #include <limits>
 #include <map>
@@ -287,16 +289,9 @@ void RosFilter::controlStampedCallback(
     // Update the filter with this control term
     filter_->setControl(latest_control_, msg->header.stamp);
   } else {
-    // ROS_WARN_STREAM_THROTTLE(5.0, "Commanded velocities must be given in the
-    // robot's body frame (" << base_link_frame_id_ << "). Message frame was " <<
-    // msg->header.frame_id);
-    RCLCPP_ERROR(node_->get_logger(), "Commanded velocities must be given in the robot's body frame ('%s'). Message Frame was '%s'",
+    RCUTILS_LOG_WARN_THROTTLE(RCUTILS_STEADY_TIME, 2000, 
+        "Commanded velocities must be given in the robot's body frame ('%s'). Message Frame was '%s'", 
         base_link_frame_id_.c_str(), msg->header.frame_id.c_str());
-
-    // std::cerr <<
-    //   "Commanded velocities must be given in the robot's body frame (" <<
-    //   base_link_frame_id_ << "). Message frame was " <<
-    //   msg->header.frame_id << "\n";
   }
 }
 
@@ -577,11 +572,17 @@ void RosFilter::integrateMeasurements(const rclcpp::Time & current_time)
       if (!revertTo(first_measurement->time_ - rclcpp::Duration(1))) {
         RF_DEBUG("ERROR: history interval is too small to revert to time " <<
           filter_utilities::toSec(first_measurement->time_) << "\n");
-        // ROS_WARN_STREAM_THROTTLE(10.0, "Received old measurement for topic "
-        // << first_measurement->topic_name_ <<
-        //                         ", but history interval is insufficiently
-        //                         sized to " "revert state and measurement
-        //                         queue.");
+
+        RCUTILS_LOG_WARN_THROTTLE(RCUTILS_STEADY_TIME, 2000, 
+        "Received old measurement for topic %s , but history interval is insufficiently sized Measurement time is %f, current time is %f, history length is %f.",
+        first_measurement->topic_name_.c_str(), filter_utilities::toSec(first_measurement->time_),
+        filter_utilities::toSec(current_time), filter_utilities::toSec(history_length_));
+
+        // ROS_WARN_STREAM_DELAYED_THROTTLE(historyLength_, "Received old measurement for topic " <<
+        //     firstMeasurementTopic << ", but history interval is insufficiently sized. Measurement time is " <<
+        //     std::setprecision(20) << firstMeasurementTime << ", current time is " << currentTime.toSec() <<
+        //     ", history length is " << historyLength_ << ".");
+
         restored_measurement_count = 0;
       }
 
