@@ -709,9 +709,6 @@ bool NavSatTransform::prepareGpsOdometry(nav_msgs::msg::Odometry & gps_odom)
 
     // Want the pose of the vehicle origin, not the GPS
     tf2::Transform transformed_utm_robot;
-    // rclcpp::Time time(static_cast<double>(gps_odom.header.stamp.sec) +
-      // static_cast<double>(gps_odom.header.stamp.nanosec) /
-      // 1000000000.0);
     getRobotOriginWorldPose(transformed_utm_gps, transformed_utm_robot, gps_odom.header.stamp);
 
     // Rotate the covariance as well
