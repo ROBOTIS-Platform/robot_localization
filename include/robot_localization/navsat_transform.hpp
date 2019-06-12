@@ -368,7 +368,9 @@ private:
 
   rclcpp::Service<robot_localization::srv::SetDatum>::SharedPtr datum_srv_;
 
-  geometry_msgs::msg::TransformStamped utm_transform_stamped_;
+  std::shared_ptr<tf2_ros::StaticTransformBroadcaster> local_map_broadcaster_;
+  geometry_msgs::msg::TransformStamped local_map_transform_stamped_;
+  bool get_local_map_transform_;
 };
 
 }  // namespace robot_localization
