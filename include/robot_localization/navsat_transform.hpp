@@ -357,6 +357,7 @@ private:
 
   rclcpp::Node::SharedPtr node_;
   rclcpp::TimerBase::SharedPtr update_timer_;
+  rclcpp::TimerBase::SharedPtr static_tf_timer_;
 
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr gps_odom_pub_;
   rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr filtered_gps_pub_;
@@ -366,6 +367,8 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr gps_sub_;
 
   rclcpp::Service<robot_localization::srv::SetDatum>::SharedPtr datum_srv_;
+
+  geometry_msgs::msg::TransformStamped utm_transform_stamped_;
 };
 
 }  // namespace robot_localization

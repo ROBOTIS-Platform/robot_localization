@@ -214,6 +214,54 @@ NavSatTransform::~NavSatTransform() {}
 
 void NavSatTransform::run(double frequency)
 {
+  using namespace std::chrono_literals;
+
+  // geometry_msgs::msg::TransformStamped utm_transform_stamped;
+
+  utm_transform_stamped_.transform.translation.x = 0.0;
+  utm_transform_stamped_.transform.translation.y = 0.0;
+  utm_transform_stamped_.transform.translation.z = 0.0;
+
+  utm_transform_stamped_.transform.rotation.x =0.0;
+  utm_transform_stamped_.transform.rotation.y =0.0;
+  utm_transform_stamped_.transform.rotation.z = 0.0;
+  utm_transform_stamped_.transform.rotation.w = 1.0; 
+
+  static_tf_timer_ = this->create_wall_timer(
+    100ms,
+    [this]()
+  {
+    // geometry_msgs::msg::TransformStamped utm_transform_stamped;
+
+    // Send out the (static) UTM transform in case anyone else would like to use it.
+    if (has_transform_odom_ && has_transform_gps_ && has_transform_imu_ && broadcast_utm_transform_) 
+    {      
+      // utm_transform_stamped.header.stamp = node_->now();
+      // utm_transform_stamped.header.frame_id = "map";
+        // (broadcast_utm_transform_as_parent_frame_ ? "utm" : world_frame_id_);
+      // utm_transform_stamped.child_frame_id = "local_map";
+        // (broadcast_utm_transform_as_parent_frame_ ? world_frame_id_ : "utm");
+      utm_transform_stamped_.transform = tf2::toMsg(latest_utm_pose_);
+        // (broadcast_utm_transform_as_parent_frame_ ? tf2::toMsg(utm_world_trans_inverse_) : tf2::toMsg(utm_world_transform_));
+      utm_transform_stamped_.transform.translation.z = 0.0;
+        // (zero_altitude_ ? 0.0 : utm_transform_stamped.transform.translation.z);
+      // utm_transform_stamped.transform.rotation = tf2::toMsg(transform_orientation_);
+      // utm_transform_stamped.transform.rotation = tf2::toMsg(latest_world_pose_.getRotation());
+      utm_transform_stamped_.transform.rotation.x =0.0;
+      utm_transform_stamped_.transform.rotation.y =0.0;
+      utm_transform_stamped_.transform.rotation.z = -0.807;
+      utm_transform_stamped_.transform.rotation.w = 0.707;      
+
+      broadcast_utm_transform_ = false;
+    }
+    
+    utm_transform_stamped_.header.stamp = node_->now();
+    utm_transform_stamped_.header.frame_id = "map";
+    utm_transform_stamped_.child_frame_id = "local_map";
+
+    utm_broadcaster_->sendTransform(utm_transform_stamped_);
+  });
+
   update_timer_ = this->create_wall_timer(
     std::chrono::duration<double>(1./frequency),
     [this]()
@@ -330,21 +378,29 @@ void NavSatTransform::computeTransform()
 
     transform_good_ = true;
 
-    // Send out the (static) UTM transform in case anyone else would like to use it.
-    if (broadcast_utm_transform_) {
-      geometry_msgs::msg::TransformStamped utm_transform_stamped;
-      utm_transform_stamped.header.stamp = node_->now();
-      utm_transform_stamped.header.frame_id =
-        (broadcast_utm_transform_as_parent_frame_ ? "utm" : world_frame_id_);
-      utm_transform_stamped.child_frame_id =
-        (broadcast_utm_transform_as_parent_frame_ ? world_frame_id_ : "utm");
-      utm_transform_stamped.transform =
-        (broadcast_utm_transform_as_parent_frame_ ? tf2::toMsg(utm_world_trans_inverse_) : tf2::toMsg(utm_world_transform_));
-      utm_transform_stamped.transform.translation.z =
-        (zero_altitude_ ? 0.0 : utm_transform_stamped.transform.translation.z);
+    // // Send out the (static) UTM transform in case anyone else would like to use it.
+    // if (broadcast_utm_transform_) {
+    //   geometry_msgs::msg::TransformStamped utm_transform_stamped;
+    //   utm_transform_stamped.header.stamp = node_->now();
+    //   utm_transform_stamped.header.frame_id = "map";
+    //     // (broadcast_utm_transform_as_parent_frame_ ? "utm" : world_frame_id_);
+    //   utm_transform_stamped.child_frame_id = "local_map";
+    //     // (broadcast_utm_transform_as_parent_frame_ ? world_frame_id_ : "utm");
+    //   utm_transform_stamped.transform = tf2::toMsg(latest_utm_pose_);
+    //     // (broadcast_utm_transform_as_parent_frame_ ? tf2::toMsg(utm_world_trans_inverse_) : tf2::toMsg(utm_world_transform_));
+    //   utm_transform_stamped.transform.translation.z = 0.0;
+    //     // (zero_altitude_ ? 0.0 : utm_transform_stamped.transform.translation.z);
+    //   utm_transform_stamped.transform.rotation = tf2::toMsg(transform_orientation_);
+    //   // utm_transform_stamped.transform.rotation = tf2::toMsg(latest_world_pose_.getRotation());
+    //   // utm_transform_stamped.transform.rotation.x =0.0;
+    //   // utm_transform_stamped.transform.rotation.y =0.0;
+    //   // utm_transform_stamped.transform.rotation.z = -0.807;
+    //   // utm_transform_stamped.transform.rotation.w = 0.707;
 
-      utm_broadcaster_->sendTransform(utm_transform_stamped);
-    }
+    //   utm_broadcaster_->sendTransform(utm_transform_stamped);
+
+    //   // broadcast_utm_transform_ = false;
+    // }
   }
 }
 
