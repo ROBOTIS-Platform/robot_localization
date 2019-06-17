@@ -1224,9 +1224,7 @@ void RosFilter::loadParams()
       // Check for pose rejection threshold
       double pose_mahalanobis_thresh = std::numeric_limits<double>::max();
       node_->declare_parameter(pose_topic_name + std::string("_rejection_threshold"));
-      node_->get_parameter(pose_topic_name +
-                               std::string("_rejection_threshold"),
-                           pose_mahalanobis_thresh);
+      node_->get_parameter(pose_topic_name + std::string("_rejection_threshold"), pose_mahalanobis_thresh);
 
       // Pull in the sensor's config, zero out values that are invalid for the
       // pose type
@@ -1256,10 +1254,8 @@ void RosFilter::loadParams()
           twist_var_counts[StateMemberVx] += pose_update_vec[StateMemberX];
           twist_var_counts[StateMemberVy] += pose_update_vec[StateMemberY];
           twist_var_counts[StateMemberVz] += pose_update_vec[StateMemberZ];
-          twist_var_counts[StateMemberVroll] +=
-              pose_update_vec[StateMemberRoll];
-          twist_var_counts[StateMemberVpitch] +=
-              pose_update_vec[StateMemberPitch];
+          twist_var_counts[StateMemberVroll] += pose_update_vec[StateMemberRoll];
+          twist_var_counts[StateMemberVpitch] +=  pose_update_vec[StateMemberPitch];
           twist_var_counts[StateMemberVyaw] += pose_update_vec[StateMemberYaw];
         }
         else
@@ -1267,12 +1263,9 @@ void RosFilter::loadParams()
           abs_pose_var_counts[StateMemberX] += pose_update_vec[StateMemberX];
           abs_pose_var_counts[StateMemberY] += pose_update_vec[StateMemberY];
           abs_pose_var_counts[StateMemberZ] += pose_update_vec[StateMemberZ];
-          abs_pose_var_counts[StateMemberRoll] +=
-              pose_update_vec[StateMemberRoll];
-          abs_pose_var_counts[StateMemberPitch] +=
-              pose_update_vec[StateMemberPitch];
-          abs_pose_var_counts[StateMemberYaw] +=
-              pose_update_vec[StateMemberYaw];
+          abs_pose_var_counts[StateMemberRoll] += pose_update_vec[StateMemberRoll];
+          abs_pose_var_counts[StateMemberPitch] +=  pose_update_vec[StateMemberPitch];
+          abs_pose_var_counts[StateMemberYaw] +=  pose_update_vec[StateMemberYaw];
         }
       }
       else
@@ -1280,10 +1273,6 @@ void RosFilter::loadParams()
         RCLCPP_ERROR(node_->get_logger(),
                      "Warning %s is listed as an input topic, but all pose update variables are false",
                      pose_topic.c_str());
-
-        // std::cerr << "Warning: " << pose_topic <<
-        // " is listed as an input topic, "
-        // "but all pose update variables are false\n";
       }
 
       RF_DEBUG("Subscribed to " << pose_topic << " (" << pose_topic_name << ")\n\t" << pose_topic_name << "_differential is " << (differential ? "true" : "false") << "\n\t" << pose_topic_name << "_rejection_threshold is " << pose_mahalanobis_thresh << "\n\t" << pose_topic_name << " update vector is " << pose_update_vec);
@@ -1340,10 +1329,8 @@ void RosFilter::loadParams()
         twist_var_counts[StateMemberVx] += twist_update_vec[StateMemberVx];
         twist_var_counts[StateMemberVy] += twist_update_vec[StateMemberVy];
         twist_var_counts[StateMemberVz] += twist_update_vec[StateMemberVz];
-        twist_var_counts[StateMemberVroll] +=
-            twist_update_vec[StateMemberVroll];
-        twist_var_counts[StateMemberVpitch] +=
-            twist_update_vec[StateMemberVpitch];
+        twist_var_counts[StateMemberVroll] += twist_update_vec[StateMemberVroll];
+        twist_var_counts[StateMemberVpitch] += twist_update_vec[StateMemberVpitch];
         twist_var_counts[StateMemberVyaw] += twist_update_vec[StateMemberVyaw];
       }
       else
@@ -1351,10 +1338,6 @@ void RosFilter::loadParams()
         RCLCPP_ERROR(node_->get_logger(),
                      "Warning %s is listed as an input topic, but all twist update variables are false",
                      twist_topic.c_str());
-
-        // std::cerr << "Warning: " << twist_topic <<
-        // " is listed as an input topic, "
-        // "but all twist update variables are false\n";
       }
 
       RF_DEBUG("Subscribed to " << twist_topic << " (" << twist_topic_name << ")\n\t" << twist_topic_name << "_rejection_threshold is " << twist_mahalanobis_thresh << "\n\t" << twist_topic_name << " update vector is " << twist_update_vec);
@@ -1391,10 +1374,6 @@ void RosFilter::loadParams()
                      "Both %s_differential and %s_relative were set to true. Using differential mode.",
                      imu_topic_name.c_str(),
                      imu_topic_name.c_str());
-
-        // std::cerr << "Both " << imu_topic_name << "_differential" <<
-        // " and " << imu_topic_name <<
-        // "_relative were set to true. Using differential mode.\n";
 
         relative = false;
       }
@@ -1469,8 +1448,6 @@ void RosFilter::loadParams()
       {
         RCLCPP_ERROR(node_->get_logger(),
                      "X acceleration is being measured from IMU; X velocity control input is disabled");
-        // std::cerr << "X acceleration is being measured from IMU; X velocity "
-        // "control input is disabled\n";
         control_update_vector[ControlMemberVx] = 0;
       }
       if (control_update_vector[ControlMemberVy] &&
@@ -1478,8 +1455,6 @@ void RosFilter::loadParams()
       {
         RCLCPP_ERROR(node_->get_logger(),
                      "Y acceleration is being measured from IMU; Y velocity control input is disabled");
-        // std::cerr << "Y acceleration is being measured from IMU; Y velocity "
-        // "control input is disabled\n";
         control_update_vector[ControlMemberVy] = 0;
       }
       if (control_update_vector[ControlMemberVz] &&
@@ -1487,8 +1462,6 @@ void RosFilter::loadParams()
       {
         RCLCPP_ERROR(node_->get_logger(),
                      "Z acceleration is being measured from IMU; Z velocity control input is disabled");
-        // std::cerr << "Z acceleration is being measured from IMU; Z velocity "
-        // "control input is disabled\n";
         control_update_vector[ControlMemberVz] = 0;
       }
 
@@ -1518,9 +1491,6 @@ void RosFilter::loadParams()
         RCLCPP_ERROR(node_->get_logger(),
                      "Warning: %s is listed as an input topic, but all its update variables are false",
                      imu_topic.c_str());
-        // std::cerr << "Warning: " << imu_topic <<
-        // " is listed as an input topic, "
-        // "but all its update variables are false\n";
       }
 
       if (pose_update_sum > 0)
@@ -1564,9 +1534,7 @@ void RosFilter::loadParams()
   {
     RCLCPP_ERROR(node_->get_logger(),
                  "use_control is set to true, but control_config has only false values. No control term will be used.");
-    // std::cerr << "use_control is set to true, but control_config has only "
-    // "false values. No control term "
-    // "will be used.\n";
+
     use_control_ = false;
   }
 
