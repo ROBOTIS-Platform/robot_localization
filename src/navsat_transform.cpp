@@ -364,8 +364,8 @@ void NavSatTransform::computeTransform()
     tf2::Quaternion imu_quat;
     imu_quat.setRPY(0.0, 0.0, imu_yaw);
 
-    // The transform order will be orig_odom_pos * orig_utm_pos_inverse *
-    // cur_utm_pos. Doing it this way will allow us to cope with having non-zero
+    // The transform order will be orig_odom_pos * orig_utm_pos_inverse * cur_utm_pos. 
+    // Doing it this way will allow us to cope with having non-zero
     // odometry position when we get our first GPS message.
     tf2::Transform utm_pose_with_orientation;
     utm_pose_with_orientation.setOrigin(transform_utm_pose_corrected.getOrigin());
@@ -376,7 +376,8 @@ void NavSatTransform::computeTransform()
     utm_world_trans_inverse_ = utm_world_transform_.inverse();
 
     std::stringstream ss;
-    ss << "Transform world frame pose is \n" << transform_world_pose_ << "\nWorld frame->utm transform is\n " << utm_world_transform_;
+    ss << "Transform world frame pose is \n" << transform_world_pose_ 
+      << "\nWorld frame->utm transform is\n " << utm_world_transform_;
     RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
 
     transform_good_ = true;
@@ -736,7 +737,7 @@ void NavSatTransform::setTransformOdometry(
     imu.orientation = msg->pose.pose.orientation;
     imu.header.frame_id = msg->child_frame_id;
     imu.header.stamp = msg->header.stamp;
-    // sensor_msgs::msg::Imu::ConstPtr imuPtr =
+
     auto imuPtr = std::make_shared<sensor_msgs::msg::Imu>(imu);
     imuCallback(imuPtr);
   }
