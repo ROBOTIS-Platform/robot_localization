@@ -56,30 +56,30 @@ using std::placeholders::_2;
 namespace robot_localization
 {
 NavSatTransform::NavSatTransform(std::string node_name)
-: Node(node_name),
-  magnetic_declination_(0.0),
-  utm_odom_tf_yaw_(0.0),
-  yaw_offset_(0.0),
-  transform_timeout_(0),
-  get_local_map_transform_(true),
-  broadcast_utm_transform_(false),
-  broadcast_utm_transform_as_parent_frame_(false),
-  has_transform_odom_(false),
-  has_transform_gps_(false),
-  has_transform_imu_(false),
-  transform_good_(false),
-  gps_frame_id_(""),
-  gps_updated_(false),
-  odom_updated_(false),
-  publish_gps_(false),
-  use_odometry_yaw_(false),
-  use_manual_datum_(false),
-  zero_altitude_(false),
-  world_frame_id_("odom"),
-  base_link_frame_id_("base_link"),
-  utm_zone_(""),
-  tf_buffer_(this->get_clock()),
-  tf_listener_(tf_buffer_)
+    : Node(node_name),
+      magnetic_declination_(0.0),
+      utm_odom_tf_yaw_(0.0),
+      yaw_offset_(0.0),
+      transform_timeout_(0),
+      get_local_map_transform_(true),
+      broadcast_utm_transform_(false),
+      broadcast_utm_transform_as_parent_frame_(false),
+      has_transform_odom_(false),
+      has_transform_gps_(false),
+      has_transform_imu_(false),
+      transform_good_(false),
+      gps_frame_id_(""),
+      gps_updated_(false),
+      odom_updated_(false),
+      publish_gps_(false),
+      use_odometry_yaw_(false),
+      use_manual_datum_(false),
+      zero_altitude_(false),
+      world_frame_id_("odom"),
+      base_link_frame_id_("base_link"),
+      utm_zone_(""),
+      tf_buffer_(this->get_clock()),
+      tf_listener_(tf_buffer_)
 {
   node_ = std::shared_ptr<::rclcpp::Node>(this, [](::rclcpp::Node *) {});
 
@@ -119,29 +119,28 @@ NavSatTransform::NavSatTransform(std::string node_name)
 
   transform_timeout_ = rclcpp::Duration(filter_utilities::secToNanosec(transform_timeout));
 
-  if (broadcast_utm_transform_) 
+  if (broadcast_utm_transform_)
     utm_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node_);
 
   local_map_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node_);
 
-  auto datum_callback = 
-    [this](
-    const std::shared_ptr<robot_localization::srv::SetDatum::Request> request,
-    std::shared_ptr<robot_localization::srv::SetDatum::Response> response) -> bool
-  {
+  auto datum_callback =
+      [this](
+          const std::shared_ptr<robot_localization::srv::SetDatum::Request> request,
+          std::shared_ptr<robot_localization::srv::SetDatum::Response> response) -> bool {
     return datumCallback(request, response);
   };
 
   datum_srv_ = node_->create_service<robot_localization::srv::SetDatum>("set_datum", datum_callback);
 
   std::vector<double> datum_vals;
-  if (use_manual_datum_ && node_->get_parameter("datum", datum_vals)) 
+  if (use_manual_datum_ && node_->get_parameter("datum", datum_vals))
   {
     double datum_lat = 0.0;
     double datum_lon = 0.0;
     double datum_yaw = 0.0;
 
-    if (datum_vals.size() == 3) 
+    if (datum_vals.size() == 3)
     {
       datum_lat = datum_vals[0];
       datum_lon = datum_vals[1];
@@ -163,45 +162,42 @@ NavSatTransform::NavSatTransform(std::string node_name)
     datum_callback(request_ptr, response_ptr);
   }
 
-  auto odom_callback = 
-    [this](const nav_msgs::msg::Odometry::SharedPtr msg) -> void
-    {
-      odomCallback(msg);
-    };
+  auto odom_callback =
+      [this](const nav_msgs::msg::Odometry::SharedPtr msg) -> void {
+    odomCallback(msg);
+  };
 
   odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-    "odometry/filtered",
-    qos,
-    odom_callback);
+      "odometry/filtered",
+      qos,
+      odom_callback);
 
-  auto gps_callback = 
-    [this](const sensor_msgs::msg::NavSatFix::SharedPtr msg) -> void
-    {
-      gpsFixCallback(msg);
-    };
+  auto gps_callback =
+      [this](const sensor_msgs::msg::NavSatFix::SharedPtr msg) -> void {
+    gpsFixCallback(msg);
+  };
 
   gps_sub_ = node_->create_subscription<sensor_msgs::msg::NavSatFix>(
-    "gps/fix", 
-    qos,
-    gps_callback);
+      "gps/fix",
+      qos,
+      gps_callback);
 
-  auto imu_callback = 
-    [this](const sensor_msgs::msg::Imu::SharedPtr msg) -> void
-    {
-      imuCallback(msg);
-    };
+  auto imu_callback =
+      [this](const sensor_msgs::msg::Imu::SharedPtr msg) -> void {
+    imuCallback(msg);
+  };
 
-  if (!use_odometry_yaw_ && !use_manual_datum_) 
+  if (!use_odometry_yaw_ && !use_manual_datum_)
   {
     imu_sub_ = node_->create_subscription<sensor_msgs::msg::Imu>(
-      "imu", 
-      qos,
-      imu_callback);
+        "imu",
+        qos,
+        imu_callback);
   }
 
   gps_odom_pub_ = node_->create_publisher<nav_msgs::msg::Odometry>("odometry/gps", qos);
 
-  if (publish_gps_) 
+  if (publish_gps_)
   {
     filtered_gps_pub_ = node_->create_publisher<sensor_msgs::msg::NavSatFix>("gps/filtered", qos);
   }
@@ -223,80 +219,78 @@ void NavSatTransform::run(double frequency)
   local_map_transform_stamped_.transform.translation.y = 0.0;
   local_map_transform_stamped_.transform.translation.z = 0.0;
 
-  local_map_transform_stamped_.transform.rotation.x =0.0;
-  local_map_transform_stamped_.transform.rotation.y =0.0;
+  local_map_transform_stamped_.transform.rotation.x = 0.0;
+  local_map_transform_stamped_.transform.rotation.y = 0.0;
   local_map_transform_stamped_.transform.rotation.z = 0.0;
-  local_map_transform_stamped_.transform.rotation.w = 1.0; 
+  local_map_transform_stamped_.transform.rotation.w = 1.0;
 
   static_tf_timer_ = this->create_wall_timer(
-    100ms,
-    [this]()
-  {
-    if (has_transform_odom_ && 
-        has_transform_gps_ && 
-        has_transform_imu_ && 
-        get_local_map_transform_) 
-    {      
-      local_map_transform_stamped_.transform = tf2::toMsg(latest_utm_pose_);
-      local_map_transform_stamped_.transform.translation.z = 0.0;
+      100ms,
+      [this]() {
+        if (has_transform_odom_ &&
+            has_transform_gps_ &&
+            has_transform_imu_ &&
+            get_local_map_transform_)
+        {
+          local_map_transform_stamped_.transform = tf2::toMsg(latest_utm_pose_);
+          local_map_transform_stamped_.transform.translation.z = 0.0;
 
-      tf2::Quaternion q = transform_orientation_; // imu
-      // tf2::Quaternion q = latest_world_pose_.getRotation(); // odom
+          tf2::Quaternion q = transform_orientation_; // imu
+          // tf2::Quaternion q = latest_world_pose_.getRotation(); // odom
 
-      tf2::Matrix3x3 m(q);
-      double roll, pitch, yaw;
-      m.getRPY(roll, pitch, yaw);
+          tf2::Matrix3x3 m(q);
+          double roll, pitch, yaw;
+          m.getRPY(roll, pitch, yaw);
 
-      tf2::Quaternion q2;
-      q2.setRPY( 0., 0., yaw + yaw_offset_);
+          tf2::Quaternion q2;
+          q2.setRPY(0., 0., yaw + yaw_offset_);
 
-      local_map_transform_stamped_.transform.rotation.x = q2.x();
-      local_map_transform_stamped_.transform.rotation.y = q2.y();
-      local_map_transform_stamped_.transform.rotation.z = q2.z();
-      local_map_transform_stamped_.transform.rotation.w = q2.w();      
+          local_map_transform_stamped_.transform.rotation.x = q2.x();
+          local_map_transform_stamped_.transform.rotation.y = q2.y();
+          local_map_transform_stamped_.transform.rotation.z = q2.z();
+          local_map_transform_stamped_.transform.rotation.w = q2.w();
 
-      get_local_map_transform_ = false;
-    }
-    
-    local_map_transform_stamped_.header.stamp = node_->now();
-    local_map_transform_stamped_.header.frame_id = "map";
-    local_map_transform_stamped_.child_frame_id = "local_map";
+          get_local_map_transform_ = false;
+        }
 
-    local_map_broadcaster_->sendTransform(local_map_transform_stamped_);
-  });
+        local_map_transform_stamped_.header.stamp = node_->now();
+        local_map_transform_stamped_.header.frame_id = "map";
+        local_map_transform_stamped_.child_frame_id = "local_map";
+
+        local_map_broadcaster_->sendTransform(local_map_transform_stamped_);
+      });
 
   update_timer_ = this->create_wall_timer(
-    std::chrono::duration<double>(1./frequency),
-    [this]()
-  {
-    if (!transform_good_) 
-    {
-      computeTransform();
-
-      if (transform_good_ && !use_odometry_yaw_ && !use_manual_datum_) 
-      {
-        // Once we have the transform, we don't need the IMU
-        imu_sub_.reset();
-      }
-    } 
-    else 
-    {
-      nav_msgs::msg::Odometry gps_odom;
-      if (prepareGpsOdometry(gps_odom)) 
-      {
-        gps_odom_pub_->publish(gps_odom);
-      }
-
-      if (publish_gps_) 
-      {
-        sensor_msgs::msg::NavSatFix odom_gps;
-        if (prepareFilteredGps(odom_gps)) 
+      std::chrono::duration<double>(1. / frequency),
+      [this]() {
+        if (!transform_good_)
         {
-          filtered_gps_pub_->publish(odom_gps);
+          computeTransform();
+
+          if (transform_good_ && !use_odometry_yaw_ && !use_manual_datum_)
+          {
+            // Once we have the transform, we don't need the IMU
+            imu_sub_.reset();
+          }
         }
-      }
-    }
-  });
+        else
+        {
+          nav_msgs::msg::Odometry gps_odom;
+          if (prepareGpsOdometry(gps_odom))
+          {
+            gps_odom_pub_->publish(gps_odom);
+          }
+
+          if (publish_gps_)
+          {
+            sensor_msgs::msg::NavSatFix odom_gps;
+            if (prepareFilteredGps(odom_gps))
+            {
+              filtered_gps_pub_->publish(odom_gps);
+            }
+          }
+        }
+      });
 }
 
 void NavSatTransform::computeTransform()
@@ -309,17 +303,18 @@ void NavSatTransform::computeTransform()
     // The UTM pose we have is given at the location of the GPS sensor on the
     // robot. We need to get the UTM pose of the robot's origin.
     tf2::Transform transform_utm_pose_corrected;
-    if (!use_manual_datum_) 
+    if (!use_manual_datum_)
     {
       getRobotOriginUtmPose(transform_utm_pose_, transform_utm_pose_corrected, rclcpp::Time(0));
-    } 
-    else 
+    }
+    else
     {
       transform_utm_pose_corrected = transform_utm_pose_;
     }
 
     std::stringstream ss1;
-    ss1 << "Transform UTM pose corrected is \n" << transform_utm_pose_corrected;
+    ss1 << "Transform UTM pose corrected is \n"
+        << transform_utm_pose_corrected;
     RCLCPP_INFO(node_->get_logger(), "%s", ss1.str().c_str());
 
     // Get the IMU's current RPY values. Need the raw values (for yaw, anyway).
@@ -331,7 +326,7 @@ void NavSatTransform::computeTransform()
     double imu_yaw;
     mat.getRPY(imu_roll, imu_pitch, imu_yaw);
 
-      /* The IMU's heading was likely originally reported w.r.t. magnetic north.
+    /* The IMU's heading was likely originally reported w.r.t. magnetic north.
        * However, all the nodes in robot_localization assume that orientation data,
        * including that reported by IMUs, is reported in an ENU frame, with a 0 yaw
        * value being reported when facing east and increasing counter-clockwise (i.e.,
@@ -353,18 +348,18 @@ void NavSatTransform::computeTransform()
 
     imu_yaw += (magnetic_declination_ + yaw_offset_ + utm_meridian_convergence_);
 
-    RCLCPP_INFO(node_->get_logger(), 
-        "Corrected for magnetic declination of %.4f , user-specified offset of %.4f and meridian convergence of %.4f. Transform heading factor is now %.4f",
-        magnetic_declination_,
-        yaw_offset_,
-        utm_meridian_convergence_,
-        imu_yaw);
+    RCLCPP_INFO(node_->get_logger(),
+                "Corrected for magnetic declination of %.4f , user-specified offset of %.4f and meridian convergence of %.4f. Transform heading factor is now %.4f",
+                magnetic_declination_,
+                yaw_offset_,
+                utm_meridian_convergence_,
+                imu_yaw);
 
     // Convert to tf-friendly structures
     tf2::Quaternion imu_quat;
     imu_quat.setRPY(0.0, 0.0, imu_yaw);
 
-    // The transform order will be orig_odom_pos * orig_utm_pos_inverse * cur_utm_pos. 
+    // The transform order will be orig_odom_pos * orig_utm_pos_inverse * cur_utm_pos.
     // Doing it this way will allow us to cope with having non-zero
     // odometry position when we get our first GPS message.
     tf2::Transform utm_pose_with_orientation;
@@ -376,24 +371,26 @@ void NavSatTransform::computeTransform()
     utm_world_trans_inverse_ = utm_world_transform_.inverse();
 
     std::stringstream ss;
-    ss << "Transform world frame pose is \n" << transform_world_pose_ 
-      << "\nWorld frame->utm transform is\n " << utm_world_transform_;
+    ss << "Transform world frame pose is \n"
+       << transform_world_pose_
+       << "\nWorld frame->utm transform is\n " << utm_world_transform_;
     RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
 
     transform_good_ = true;
 
     // Send out the (static) UTM transform in case anyone else would like to use it.
-    if (broadcast_utm_transform_) {
+    if (broadcast_utm_transform_)
+    {
       geometry_msgs::msg::TransformStamped utm_transform_stamped;
       utm_transform_stamped.header.stamp = node_->now();
       utm_transform_stamped.header.frame_id =
-        (broadcast_utm_transform_as_parent_frame_ ? "utm" : world_frame_id_);
+          (broadcast_utm_transform_as_parent_frame_ ? "utm" : world_frame_id_);
       utm_transform_stamped.child_frame_id =
-        (broadcast_utm_transform_as_parent_frame_ ? world_frame_id_ : "utm");
+          (broadcast_utm_transform_as_parent_frame_ ? world_frame_id_ : "utm");
       utm_transform_stamped.transform =
-        (broadcast_utm_transform_as_parent_frame_ ? tf2::toMsg(utm_world_trans_inverse_) : tf2::toMsg(utm_world_transform_));
+          (broadcast_utm_transform_as_parent_frame_ ? tf2::toMsg(utm_world_trans_inverse_) : tf2::toMsg(utm_world_transform_));
       utm_transform_stamped.transform.translation.z =
-        (zero_altitude_ ? 0.0 : utm_transform_stamped.transform.translation.z);
+          (zero_altitude_ ? 0.0 : utm_transform_stamped.transform.translation.z);
 
       utm_broadcaster_->sendTransform(utm_transform_stamped);
     }
@@ -401,8 +398,8 @@ void NavSatTransform::computeTransform()
 }
 
 bool NavSatTransform::datumCallback(
-  const std::shared_ptr<robot_localization::srv::SetDatum::Request> request,
-  std::shared_ptr<robot_localization::srv::SetDatum::Response> /*response*/)
+    const std::shared_ptr<robot_localization::srv::SetDatum::Request> request,
+    std::shared_ptr<robot_localization::srv::SetDatum::Response> /*response*/)
 {
   // If we get a service call with a manual datum, even if we already computed
   // the transform using the robot's initial pose, then we want to assume that
@@ -451,22 +448,22 @@ bool NavSatTransform::datumCallback(
 }
 
 void NavSatTransform::getRobotOriginUtmPose(
-  const tf2::Transform & gps_utm_pose, 
-  tf2::Transform & robot_utm_pose,
-  const rclcpp::Time & transform_time)
+    const tf2::Transform &gps_utm_pose,
+    tf2::Transform &robot_utm_pose,
+    const rclcpp::Time &transform_time)
 {
   robot_utm_pose.setIdentity();
 
   // Get linear offset from origin for the GPS
   tf2::Transform offset;
-  bool can_transform = ros_filter_utilities::lookupTransformSafe(tf_buffer_, 
-                                                                base_link_frame_id_, 
-                                                                gps_frame_id_, 
-                                                                transform_time,
-                                                                transform_timeout_, 
-                                                                offset);
+  bool can_transform = ros_filter_utilities::lookupTransformSafe(tf_buffer_,
+                                                                 base_link_frame_id_,
+                                                                 gps_frame_id_,
+                                                                 transform_time,
+                                                                 transform_timeout_,
+                                                                 offset);
 
-  if (can_transform) 
+  if (can_transform)
   {
     // Get the orientation we'll use for our UTM->world transform
     tf2::Quaternion utm_orientation = transform_orientation_;
@@ -489,16 +486,16 @@ void NavSatTransform::getRobotOriginUtmPose(
 
     // Update the initial pose
     robot_utm_pose = offset.inverse() * gps_utm_pose;
-  } 
-  else 
+  }
+  else
   {
     RCLCPP_INFO(node_->get_logger(), "getRobotOriginUtmPose() cantransform false");
-    if (gps_frame_id_ != "") 
+    if (gps_frame_id_ != "")
     {
-      RCLCPP_ERROR(node_->get_logger(), 
-          "Unable to obtain %s -> %s transform. Will assume navsat device is mounted at robot's origin",
-          base_link_frame_id_.c_str(),
-          gps_frame_id_.c_str());
+      RCLCPP_ERROR(node_->get_logger(),
+                   "Unable to obtain %s -> %s transform. Will assume navsat device is mounted at robot's origin",
+                   base_link_frame_id_.c_str(),
+                   gps_frame_id_.c_str());
     }
 
     robot_utm_pose = gps_utm_pose;
@@ -506,77 +503,77 @@ void NavSatTransform::getRobotOriginUtmPose(
 }
 
 void NavSatTransform::getRobotOriginWorldPose(
-  const tf2::Transform & gps_odom_pose, 
-  tf2::Transform & robot_odom_pose,
-  const rclcpp::Time & transform_time)
+    const tf2::Transform &gps_odom_pose,
+    tf2::Transform &robot_odom_pose,
+    const rclcpp::Time &transform_time)
 {
   robot_odom_pose.setIdentity();
 
   // Remove the offset from base_link
   tf2::Transform gps_offset_rotated;
-  bool can_transform = ros_filter_utilities::lookupTransformSafe(tf_buffer_, 
-                                                                base_link_frame_id_, 
-                                                                gps_frame_id_, 
-                                                                transform_time,
-                                                                transform_timeout_, 
-                                                                gps_offset_rotated);
+  bool can_transform = ros_filter_utilities::lookupTransformSafe(tf_buffer_,
+                                                                 base_link_frame_id_,
+                                                                 gps_frame_id_,
+                                                                 transform_time,
+                                                                 transform_timeout_,
+                                                                 gps_offset_rotated);
 
-  if (can_transform) 
+  if (can_transform)
   {
     tf2::Transform robot_orientation;
-    can_transform = ros_filter_utilities::lookupTransformSafe(tf_buffer_, 
-                                                              world_frame_id_, 
-                                                              base_link_frame_id_, 
+    can_transform = ros_filter_utilities::lookupTransformSafe(tf_buffer_,
+                                                              world_frame_id_,
+                                                              base_link_frame_id_,
                                                               transform_time,
-                                                              transform_timeout_, 
+                                                              transform_timeout_,
                                                               robot_orientation);
 
-    if (can_transform) 
+    if (can_transform)
     {
       gps_offset_rotated.setOrigin(tf2::quatRotate(robot_orientation.getRotation(), gps_offset_rotated.getOrigin()));
       gps_offset_rotated.setRotation(tf2::Quaternion::getIdentity());
       robot_odom_pose = gps_offset_rotated.inverse() * gps_odom_pose;
-    } 
-    else 
+    }
+    else
     {
       RCLCPP_ERROR(node_->get_logger(),
-          "Could not obtain %s -> %s transform. Will not remove offset of navsat device from robot's origin",
-          world_frame_id_.c_str(),
-          base_link_frame_id_.c_str());
+                   "Could not obtain %s -> %s transform. Will not remove offset of navsat device from robot's origin",
+                   world_frame_id_.c_str(),
+                   base_link_frame_id_.c_str());
     }
-  } 
-  else 
+  }
+  else
   {
     RCLCPP_ERROR(node_->get_logger(),
-      "Could not obtain %s -> %s transform. Will not remove offset of navsat device from robot's origin",
-      base_link_frame_id_.c_str(),
-      gps_frame_id_.c_str());
+                 "Could not obtain %s -> %s transform. Will not remove offset of navsat device from robot's origin",
+                 base_link_frame_id_.c_str(),
+                 gps_frame_id_.c_str());
   }
 }
 
 void NavSatTransform::gpsFixCallback(
-  const sensor_msgs::msg::NavSatFix::SharedPtr msg)
+    const sensor_msgs::msg::NavSatFix::SharedPtr msg)
 {
   gps_frame_id_ = msg->header.frame_id;
 
-  if (gps_frame_id_.empty()) 
+  if (gps_frame_id_.empty())
   {
     RCLCPP_ERROR(node_->get_logger(),
-      "NavSatFix message has empty frame_id. Will assume navsat device is mounted at robot's origin.");
+                 "NavSatFix message has empty frame_id. Will assume navsat device is mounted at robot's origin.");
   }
 
   // Make sure the GPS data is usable
   bool good_gps =
-    (msg->status.status != sensor_msgs::msg::NavSatStatus::STATUS_NO_FIX &&
-    !std::isnan(msg->altitude) && 
-    !std::isnan(msg->latitude) &&
-    !std::isnan(msg->longitude));
+      (msg->status.status != sensor_msgs::msg::NavSatStatus::STATUS_NO_FIX &&
+       !std::isnan(msg->altitude) &&
+       !std::isnan(msg->latitude) &&
+       !std::isnan(msg->longitude));
 
-  if (good_gps) 
+  if (good_gps)
   {
     // If we haven't computed the transform yet, then
     // store this message as the initial GPS data to use
-    if (!transform_good_ && !use_manual_datum_) 
+    if (!transform_good_ && !use_manual_datum_)
     {
       setTransformGps(msg);
     }
@@ -590,12 +587,12 @@ void NavSatTransform::gpsFixCallback(
     latest_utm_covariance_.setZero();
 
     // Copy the measurement's covariance matrix so that we can rotate it later
-    for (size_t i = 0; i < POSITION_SIZE; i++) 
+    for (size_t i = 0; i < POSITION_SIZE; i++)
     {
-      for (size_t j = 0; j < POSITION_SIZE; j++) 
+      for (size_t j = 0; j < POSITION_SIZE; j++)
       {
         latest_utm_covariance_(i, j) =
-          msg->position_covariance[POSITION_SIZE * i + j];
+            msg->position_covariance[POSITION_SIZE * i + j];
       }
     }
 
@@ -605,31 +602,32 @@ void NavSatTransform::gpsFixCallback(
 }
 
 void NavSatTransform::setTransformGps(
-  const sensor_msgs::msg::NavSatFix::SharedPtr msg)
+    const sensor_msgs::msg::NavSatFix::SharedPtr msg)
 {
   double utm_x = 0;
   double utm_y = 0;
   navsat_conversions::LLtoUTM(msg->latitude, msg->longitude, utm_y, utm_x, utm_zone_, utm_meridian_convergence_);
-  utm_meridian_convergence_ *= navsat_conversions::RADIANS_PER_DEGREE; 
-
-  RCLCPP_INFO(node_->get_logger(), 
-      "Datum (latitude, longitude, altitude) is (%.4f, %.4f, %.4f)",
-      msg->latitude,
-      msg->longitude,
-      msg->altitude);
+  utm_meridian_convergence_ *= navsat_conversions::RADIANS_PER_DEGREE;
 
   RCLCPP_INFO(node_->get_logger(),
-      "Datum UTM coordinate is (%.4f, %.4f)",
-      utm_x,
-      utm_y);
+              "Datum (latitude, longitude, altitude) is (%.4f, %.4f, %.4f)",
+              msg->latitude,
+              msg->longitude,
+              msg->altitude);
+
+  RCLCPP_INFO(node_->get_logger(),
+              "Datum UTM coordinate is (%.4f, %.4f)",
+              utm_x,
+              utm_y);
 
   transform_utm_pose_.setOrigin(tf2::Vector3(utm_x, utm_y, msg->altitude));
   transform_utm_pose_.setRotation(tf2::Quaternion::getIdentity());
-  
+
   std::stringstream ss;
-  ss << "UTM pose  is \n" << transform_utm_pose_;
+  ss << "UTM pose  is \n"
+     << transform_utm_pose_;
   RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
-    
+
   has_transform_gps_ = true;
 }
 
@@ -637,28 +635,29 @@ void NavSatTransform::imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   // We need the baseLinkFrameId_ from the odometry message, so
   // we need to wait until we receive it.
-  if (has_transform_odom_) 
+  if (has_transform_odom_)
   {
     /* This method only gets called if we don't yet have the
      * IMU data (the subscriber gets shut down once we compute
      * the transform), so we can assumed that every IMU message
      * that comes here is meant to be used for that purpose. */
     tf2::fromMsg(msg->orientation, transform_orientation_);
-    
+
     std::stringstream ss;
-    ss << "IMU orientation  is \n" << transform_orientation_;
+    ss << "IMU orientation  is \n"
+       << transform_orientation_;
     RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
-    
+
     // Correct for the IMU's orientation w.r.t. base_link
     tf2::Transform target_frame_trans;
-    bool can_transform = ros_filter_utilities::lookupTransformSafe(tf_buffer_, 
-                                                                  base_link_frame_id_, 
-                                                                  msg->header.frame_id,
-                                                                  msg->header.stamp, 
-                                                                  transform_timeout_, 
-                                                                  target_frame_trans);
+    bool can_transform = ros_filter_utilities::lookupTransformSafe(tf_buffer_,
+                                                                   base_link_frame_id_,
+                                                                   msg->header.frame_id,
+                                                                   msg->header.stamp,
+                                                                   transform_timeout_,
+                                                                   target_frame_trans);
 
-    if (can_transform) 
+    if (can_transform)
     {
       double roll_offset = 0;
       double pitch_offset = 0;
@@ -673,9 +672,9 @@ void NavSatTransform::imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
       // Apply the offset (making sure to bound them), and throw them in a
       // vector
       tf2::Vector3 rpy_angles(
-        filter_utilities::clampRotation(roll - roll_offset),
-        filter_utilities::clampRotation(pitch - pitch_offset),
-        filter_utilities::clampRotation(yaw - yaw_offset));
+          filter_utilities::clampRotation(roll - roll_offset),
+          filter_utilities::clampRotation(pitch - pitch_offset),
+          filter_utilities::clampRotation(yaw - yaw_offset));
 
       // Now we need to rotate the roll and pitch by the yaw offset value.
       // Imagine a case where an IMU is mounted facing sideways. In that case
@@ -691,12 +690,12 @@ void NavSatTransform::imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 }
 
 void NavSatTransform::odomCallback(
-  const nav_msgs::msg::Odometry::SharedPtr msg)
+    const nav_msgs::msg::Odometry::SharedPtr msg)
 {
   world_frame_id_ = msg->header.frame_id;
   base_link_frame_id_ = msg->child_frame_id;
 
-  if (!transform_good_ && !use_manual_datum_) 
+  if (!transform_good_ && !use_manual_datum_)
   {
     setTransformOdometry(msg);
   }
@@ -704,12 +703,12 @@ void NavSatTransform::odomCallback(
   tf2::fromMsg(msg->pose.pose, latest_world_pose_);
   latest_odom_covariance_.setZero();
 
-  for (size_t row = 0; row < POSE_SIZE; ++row) 
+  for (size_t row = 0; row < POSE_SIZE; ++row)
   {
-    for (size_t col = 0; col < POSE_SIZE; ++col) 
+    for (size_t col = 0; col < POSE_SIZE; ++col)
     {
       latest_odom_covariance_(row, col) =
-        msg->pose.covariance[row * POSE_SIZE + col];
+          msg->pose.covariance[row * POSE_SIZE + col];
     }
   }
 
@@ -718,20 +717,21 @@ void NavSatTransform::odomCallback(
 }
 
 void NavSatTransform::setTransformOdometry(
-  const nav_msgs::msg::Odometry::SharedPtr msg)
+    const nav_msgs::msg::Odometry::SharedPtr msg)
 {
   tf2::fromMsg(msg->pose.pose, transform_world_pose_);
   has_transform_odom_ = true;
 
   std::stringstream ss;
-  ss << "Initial odometry pose is \n" << transform_world_pose_;
+  ss << "Initial odometry pose is \n"
+     << transform_world_pose_;
   RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
 
   // Users can optionally use the (potentially fused) heading from
   // the odometry source, which may have multiple fused sources of
   // heading data, and so would act as a better heading for the
   // UTM->world_frame transform.
-  if (!transform_good_ && use_odometry_yaw_ && !use_manual_datum_) 
+  if (!transform_good_ && use_odometry_yaw_ && !use_manual_datum_)
   {
     sensor_msgs::msg::Imu imu;
     imu.orientation = msg->pose.pose.orientation;
@@ -743,11 +743,11 @@ void NavSatTransform::setTransformOdometry(
   }
 }
 
-bool NavSatTransform::prepareGpsOdometry(nav_msgs::msg::Odometry & gps_odom)
+bool NavSatTransform::prepareGpsOdometry(nav_msgs::msg::Odometry &gps_odom)
 {
   bool new_data = false;
 
-  if (transform_good_ && gps_updated_ && odom_updated_) 
+  if (transform_good_ && gps_updated_ && odom_updated_)
   {
     tf2::Transform transformed_utm_gps;
 
@@ -768,7 +768,7 @@ bool NavSatTransform::prepareGpsOdometry(nav_msgs::msg::Odometry & gps_odom)
     Eigen::MatrixXd rot_6d(POSE_SIZE, POSE_SIZE);
     rot_6d.setIdentity();
 
-    for (size_t rInd = 0; rInd < POSITION_SIZE; ++rInd) 
+    for (size_t rInd = 0; rInd < POSITION_SIZE; ++rInd)
     {
       rot_6d(rInd, 0) = rot.getRow(rInd).getX();
       rot_6d(rInd, 1) = rot.getRow(rInd).getY();
@@ -786,9 +786,9 @@ bool NavSatTransform::prepareGpsOdometry(nav_msgs::msg::Odometry & gps_odom)
     gps_odom.pose.pose.position.z = (zero_altitude_ ? 0.0 : gps_odom.pose.pose.position.z);
 
     // Copy the measurement's covariance matrix so that we can rotate it later
-    for (size_t i = 0; i < POSE_SIZE; i++) 
+    for (size_t i = 0; i < POSE_SIZE; i++)
     {
-      for (size_t j = 0; j < POSE_SIZE; j++) 
+      for (size_t j = 0; j < POSE_SIZE; j++)
       {
         gps_odom.pose.covariance[POSE_SIZE * i + j] = latest_utm_covariance_(i, j);
       }
@@ -803,11 +803,11 @@ bool NavSatTransform::prepareGpsOdometry(nav_msgs::msg::Odometry & gps_odom)
 }
 
 bool NavSatTransform::prepareFilteredGps(
-  sensor_msgs::msg::NavSatFix & filtered_gps)
+    sensor_msgs::msg::NavSatFix &filtered_gps)
 {
   bool new_data = false;
 
-  if (transform_good_ && odom_updated_) 
+  if (transform_good_ && odom_updated_)
   {
     tf2::Transform odom_as_utm;
 
@@ -819,7 +819,7 @@ bool NavSatTransform::prepareFilteredGps(
     Eigen::MatrixXd rot_6d(POSE_SIZE, POSE_SIZE);
     rot_6d.setIdentity();
 
-    for (size_t rInd = 0; rInd < POSITION_SIZE; ++rInd) 
+    for (size_t rInd = 0; rInd < POSITION_SIZE; ++rInd)
     {
       rot_6d(rInd, 0) = rot.getRow(rInd).getX();
       rot_6d(rInd, 1) = rot.getRow(rInd).getY();
@@ -834,19 +834,19 @@ bool NavSatTransform::prepareFilteredGps(
 
     // Now convert the data back to lat/long and place into the message
     navsat_conversions::UTMtoLL(odom_as_utm.getOrigin().getY(),
-                                odom_as_utm.getOrigin().getX(), 
+                                odom_as_utm.getOrigin().getX(),
                                 utm_zone_,
-                                filtered_gps.latitude, 
+                                filtered_gps.latitude,
                                 filtered_gps.longitude);
     filtered_gps.altitude = odom_as_utm.getOrigin().getZ();
 
     // Copy the measurement's covariance matrix back
-    for (size_t i = 0; i < POSITION_SIZE; i++) 
+    for (size_t i = 0; i < POSITION_SIZE; i++)
     {
-      for (size_t j = 0; j < POSITION_SIZE; j++) 
+      for (size_t j = 0; j < POSITION_SIZE; j++)
       {
         filtered_gps.position_covariance[POSITION_SIZE * i + j] =
-          latest_odom_covariance_(i, j);
+            latest_odom_covariance_(i, j);
       }
     }
 
@@ -863,4 +863,4 @@ bool NavSatTransform::prepareFilteredGps(
   return new_data;
 }
 
-}  // namespace robot_localization
+} // namespace robot_localization
