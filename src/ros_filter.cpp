@@ -134,8 +134,7 @@ void RosFilter::initialize()
   // Optional acceleration publisher
   if (publish_acceleration_)
   {
-    accel_pub_ =
-        node_->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>("accel/filtered", qos_);
+    accel_pub_ =  node_->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>("accel/filtered", qos_);
   }
 
   last_diag_time_ = node_->now();
@@ -188,7 +187,6 @@ void RosFilter::accelerationCallback(
   const std::string &topic_name = callback_data.topic_name_;
 
   RF_DEBUG("------ RosFilter::accelerationCallback (" << topic_name << ") ------\n")
-  // "Twist message:\n" << *msg);
 
   if (last_message_times_.count(topic_name) == 0)
   {
