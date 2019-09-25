@@ -440,6 +440,7 @@ bool NavSatTransform::datumCallback(
   sensor_msgs::msg::Imu imu;
   imu.orientation = request->geo_pose.orientation;
   imu.header.frame_id = base_link_frame_id_;
+  imu.header.stamp = node_->now();
 
   auto imu_ptr = std::make_shared<sensor_msgs::msg::Imu>(imu);
   imuCallback(imu_ptr);
