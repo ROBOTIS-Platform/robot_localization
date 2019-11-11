@@ -83,7 +83,7 @@ NavSatTransform::NavSatTransform(std::string node_name)
 {
   node_ = std::shared_ptr<::rclcpp::Node>(this, [](::rclcpp::Node *) {});
 
-  auto qos = rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_default));
+  auto qos = rclcpp::QoS(rclcpp::SensorDataQoS());
 
   latest_utm_covariance_.resize(POSE_SIZE, POSE_SIZE);
   latest_odom_covariance_.resize(POSE_SIZE, POSE_SIZE);

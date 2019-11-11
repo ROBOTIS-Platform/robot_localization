@@ -78,7 +78,7 @@ RosFilter::RosFilter(
   use_control_(false),
   smooth_lagged_data_(false),
   diagnostic_updater_(this->create_sub_node("diagnostic_update")),
-  qos_(rclcpp::KeepLast(10))
+  qos_(rclcpp::QoS(rclcpp::SensorDataQoS()))
 {
   node_ = std::shared_ptr<::rclcpp::Node>(this, [](::rclcpp::Node *) {});
 
