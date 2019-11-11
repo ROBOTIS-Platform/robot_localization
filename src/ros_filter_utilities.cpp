@@ -142,13 +142,13 @@ bool lookupTransformSafe(
         .transform,
         target_frame_trans);
 
-      RCUTILS_LOG_WARN_THROTTLE(RCUTILS_STEADY_TIME, 2000, 
-        "Transform from %s to %s was unavailable for the time requested. Using latest instead.", 
-        source_frame.c_str(),
-        target_frame.c_str());
-        
+      // RCUTILS_LOG_WARN_THROTTLE(RCUTILS_STEADY_TIME, 2000,
+      //   "Transform from %s to %s was unavailable for the time requested. Using latest instead.",
+      //   source_frame.c_str(),
+      //   target_frame.c_str());
+
     } catch (tf2::TransformException & ex) {
-      RCUTILS_LOG_WARN_THROTTLE(RCUTILS_STEADY_TIME, 2000, 
+      RCUTILS_LOG_WARN_THROTTLE(RCUTILS_STEADY_TIME, 2000,
       "Could not obtain transform from %s to %s . Error was %s",
         source_frame.c_str(),
         target_frame.c_str(),
