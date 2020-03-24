@@ -34,9 +34,11 @@
 #define ROBOT_LOCALIZATION__NAVSAT_TRANSFORM_HPP_
 
 #include <robot_localization/srv/set_datum.hpp>
+#include <robot_localization/srv/to_ll.hpp>
+#include <robot_localization/srv/from_ll.hpp>
 
-#include <rclcpp/time.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <robot_localization/srv/set_datum.hpp>
@@ -58,19 +60,19 @@ public:
   /**
    * @brief Constructor
    */
-  NavSatTransform(std::string node_name);
+  explicit NavSatTransform(const rclcpp::NodeOptions &);
 
   /**
    * @brief Destructor
    */
   ~NavSatTransform();
 
-  /**
-   * @brief Main run loop
-   */
-  void run(double frequency);
-
 private:
+  /**
+   * @brief Callback for computing and publish transform
+   */
+  void transformCallback();
+
   /**
    * @brief Computes the transform from the UTM frame to the odom frame
    */
@@ -79,10 +81,22 @@ private:
   /**
    * @brief Callback for the datum service
    */
-  // Commented as datumCallback replaced with lamda function.
   bool datumCallback(
-    const std::shared_ptr<robot_localization::srv::SetDatum::Request> request,
+    const std::shared_ptr<robot_localization::srv::SetDatum::Request>
+    request,
     std::shared_ptr<robot_localization::srv::SetDatum::Response>);
+
+  //! @brief Callback for the to Lat Long service
+  //!
+  bool toLLCallback(
+    const std::shared_ptr<robot_localization::srv::ToLL::Request> request,
+    std::shared_ptr<robot_localization::srv::ToLL::Response> response);
+
+  //! @brief Callback for the from Lat Long service
+  //!
+  bool fromLLCallback(
+    const std::shared_ptr<robot_localization::srv::FromLL::Request> request,
+    std::shared_ptr<robot_localization::srv::FromLL::Response> response);
 
   /**
    * @brief Given the pose of the navsat sensor in the UTM frame, removes the
@@ -139,14 +153,28 @@ private:
    * transform
    * @param[in] msg The NavSatFix message to use in the transform
    */
-  void setTransformGps(const sensor_msgs::msg::NavSatFix::SharedPtr msg);
+  void setTransformGps(const sensor_msgs::msg::NavSatFix::SharedPtr & msg);
 
   /**
    * @brief Used for setting the odometry data that will be used to compute the
    * transform
    * @param[in] msg The odometry message to use in the transform
    */
-  void setTransformOdometry(const nav_msgs::msg::Odometry::SharedPtr msg);
+  void setTransformOdometry(const nav_msgs::msg::Odometry::SharedPtr & msg);
+
+  /**
+   * @brief Transforms the passed in pose from utm to map frame
+   *  @param[in] utm_pose the pose in utm frame to use to transform
+   */
+  nav_msgs::msg::Odometry utmToMap(const tf2::Transform & utm_pose) const;
+
+  /**
+   * @brief Transforms the passed in point from map frame to lat/long
+   * @param[in] point the point in map frame to use to transform
+   */
+  void mapToLL(
+    const tf2::Vector3 & point, double & latitude, double & longitude,
+    double & altitude) const;
 
   /**
    * @brief Frame ID of the robot's body frame
@@ -168,9 +196,39 @@ private:
   bool broadcast_utm_transform_as_parent_frame_;
 
   /**
+   * @brief TimerBase for publish callback
+   */
+  rclcpp::Service<robot_localization::srv::SetDatum>::SharedPtr datum_srv_;
+
+  /**
+   * @brief Service for to Lat Long
+   */
+  rclcpp::Service<robot_localization::srv::ToLL>::SharedPtr to_ll_srv_;
+
+  /**
+   * @brief Service for from Lat Long
+   */
+  rclcpp::Service<robot_localization::srv::FromLL>::SharedPtr from_ll_srv_;
+
+  /**
+   * @brief Navsatfix publisher
+   */
+  rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr filtered_gps_pub_;
+
+  /**
    * @brief The frame_id of the GPS message (specifies mounting location)
    */
   std::string gps_frame_id_;
+
+  /**
+   * @brief GPS odometry publisher
+   */
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr gps_odom_pub_;
+
+  /**
+   * @brief GPS Subscription
+   */
+  rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr gps_sub_;
 
   /**
    * @brief Timestamp of the latest good GPS message
@@ -202,6 +260,11 @@ private:
    * @brief Signifies that we have received a usable odometry message
    */
   bool has_transform_odom_;
+
+  /**
+   * @brief IMU Subscription
+   */
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
 
   /**
    * @brief Covariance for most recent odometry data
@@ -238,6 +301,11 @@ private:
   double utm_meridian_convergence_;
 
   /**
+   * @brief Odometry Subscription
+   */
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+
+  /**
    * @brief Timestamp of the latest good odometry message
    *
    * We assign this value to the timestamp of the odometry message that we
@@ -261,12 +329,12 @@ private:
   /**
    * @brief Transform buffer for managing coordinate transforms
    */
-  tf2_ros::Buffer tf_buffer_;
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
   /**
    * @brief Transform listener for receiving transforms
    */
-  tf2_ros::TransformListener tf_listener_;
+  std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
 
   /**
    * @brief Whether or not we've computed a good heading
@@ -274,9 +342,20 @@ private:
   bool transform_good_;
 
   /**
+   * @brief Timer
+   */
+  rclcpp::TimerBase::SharedPtr timer_;
+
+  /**
    * @brief Latest IMU orientation
    */
   tf2::Quaternion transform_orientation_;
+
+  /**
+   * @brief Parameter that specifies the how long we wait for a transform to
+   * become available.
+   */
+  tf2::Duration transform_timeout_;
 
   /**
    * @brief Holds the UTM pose that is used to compute the transform
@@ -305,9 +384,14 @@ private:
   std::shared_ptr<tf2_ros::StaticTransformBroadcaster> utm_broadcaster_;
 
   /**
-   * @brief Stores the yaw we need to compute the transform
+   * @brief UTM's meridian convergence
+   *
+   * Angle between projected meridian (True North) and UTM's grid Y-axis.
+   * For UTM projection (Ellipsoidal Transverse Mercator) it is zero on the
+   * equator and non-zero everywhere else. It increases as the poles are
+   * approached or as we're getting farther from central meridian.
    */
-  double utm_odom_tf_yaw_;
+  double utm_meridian_convergence_;
 
   /**
    * @brief Holds the UTM->odom transform
@@ -341,36 +425,12 @@ private:
   double yaw_offset_;
 
   /**
-   * @brief Parameter that specifies the how long we wait for a transform to
-   * become available.
-   */
-  // tf2::Duration transform_timeout_;
-  rclcpp::Duration transform_timeout_;
-
-  /**
    * @brief Whether or not to report 0 altitude
    *
    * If this parameter is true, we always report 0 for the altitude of the
    * converted GPS odometry message.
    */
   bool zero_altitude_;
-
-  rclcpp::Node::SharedPtr node_;
-  rclcpp::TimerBase::SharedPtr update_timer_;
-  rclcpp::TimerBase::SharedPtr static_tf_timer_;
-
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr gps_odom_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::NavSatFix>::SharedPtr filtered_gps_pub_;
-
-  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
-  rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr gps_sub_;
-
-  rclcpp::Service<robot_localization::srv::SetDatum>::SharedPtr datum_srv_;
-
-  std::shared_ptr<tf2_ros::StaticTransformBroadcaster> local_map_broadcaster_;
-  geometry_msgs::msg::TransformStamped local_map_transform_stamped_;
-  bool get_local_map_transform_;
 };
 
 }  // namespace robot_localization

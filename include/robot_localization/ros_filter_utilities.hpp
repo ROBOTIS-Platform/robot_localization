@@ -46,7 +46,7 @@
 #include <vector>
 
 #define RF_DEBUG(msg) \
-  if (filter_->getDebug()) { \
+  if (filter_.getDebug()) { \
     debug_stream_ << msg; \
   }
 
@@ -71,6 +71,7 @@ double getYaw(const tf2::Quaternion quat);
 //! @param[in] time - The time at which we want the transform
 //! @param[in] timeout - How long to block before falling back to last transform
 //! @param[out] targetFrameTrans - The resulting transform object
+//! @param[in] silent - Whether or not to print transform warnings
 //! @return Sets the value of @p targetFrameTrans and returns true if
 //! successful, false otherwise.
 //!
@@ -82,12 +83,13 @@ double getYaw(const tf2::Quaternion quat);
 //! value of @p targetFrameTrans and returns true, otherwise it returns false.
 //!
 bool lookupTransformSafe(
-  const tf2_ros::Buffer & buffer,
+  const tf2_ros::Buffer * buffer,
   const std::string & target_frame,
   const std::string & source_frame,
   const rclcpp::Time & time,
   const rclcpp::Duration & timeout,
-  tf2::Transform & target_frame_trans);
+  tf2::Transform & target_frame_trans,
+  const bool silent = false);
 
 //! @brief Method for safely obtaining transforms.
 //! @param[in] buffer - tf buffer object to use for looking up the transform
@@ -95,6 +97,7 @@ bool lookupTransformSafe(
 //! @param[in] sourceFrame - The source frame of the desired transform
 //! @param[in] time - The time at which we want the transform
 //! @param[out] targetFrameTrans - The resulting transform object
+//! @param[in] silent - Whether or not to print transform warnings
 //! @return Sets the value of @p targetFrameTrans and returns true if
 //! successful, false otherwise.
 //!
@@ -106,11 +109,12 @@ bool lookupTransformSafe(
 //! value of @p targetFrameTrans and returns true, otherwise it returns false.
 //!
 bool lookupTransformSafe(
-  const tf2_ros::Buffer & buffer,
+  const tf2_ros::Buffer * buffer,
   const std::string & targetFrame,
   const std::string & sourceFrame,
   const rclcpp::Time & time,
-  tf2::Transform & targetFrameTrans);
+  tf2::Transform & targetFrameTrans,
+  const bool silent = false);
 
 //! @brief Utility method for converting quaternion to RPY
 //! @param[in] quat - The quaternion to convert

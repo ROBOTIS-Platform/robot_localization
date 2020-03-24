@@ -141,24 +141,23 @@ public:
     imu_msg_ = getValidImu();
 
     // Create a publisher with a custom Quality of Service profile.
-    rmw_qos_profile_t custom_qos_profile = rmw_qos_profile_default;
-    custom_qos_profile.depth = 10;
     // subscribe to diagnostics and create publishers for the odometry messages.
     odom_pub_ = node_->create_publisher<nav_msgs::msg::Odometry>(
-      "example/odom", custom_qos_profile);
+      "/example/odom", rclcpp::SensorDataQoS());
     pose_pub_ =
       node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
-      "example/pose", custom_qos_profile);
+      "/example/pose", rclcpp::SensorDataQoS());
     twist_pub_ =
       node_->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(
-      "example/twist", custom_qos_profile);
+      "/example/twist", rclcpp::SensorDataQoS());
     imu_pub_ = node_->create_publisher<sensor_msgs::msg::Imu>(
-      "example/imu/data", custom_qos_profile);
+      "/example/imu/data", rclcpp::SensorDataQoS());
 
+    rclcpp::SystemDefaultsQoS qos = rclcpp::SystemDefaultsQoS();
     diagnostic_sub_ =
       node_->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
-      "/diagnostics",
-      [this](diagnostic_msgs::msg::DiagnosticArray::UniquePtr msg) {
+      "/diagnostics", qos.keep_all(),
+      [&](diagnostic_msgs::msg::DiagnosticArray::UniquePtr msg) {
         diagnostics.push_back(*msg);
       });
 
@@ -169,16 +168,16 @@ public:
   void publishMessages(rclcpp::Time t)
   {
     odom_msg_->header.stamp = t;
-    odom_pub_->publish(odom_msg_);
+    odom_pub_->publish(*odom_msg_);
 
     pose_msg_->header.stamp = t;
-    pose_pub_->publish(pose_msg_);
+    pose_pub_->publish(*pose_msg_);
 
     twist_msg_->header.stamp = t;
-    twist_pub_->publish(twist_msg_);
+    twist_pub_->publish(*twist_msg_);
 
     imu_msg_->header.stamp = t;
-    imu_pub_->publish(imu_msg_);
+    imu_pub_->publish(*imu_msg_);
   }
 
   void setPose(rclcpp::Time t)
@@ -226,9 +225,9 @@ TEST(FilterBaseDiagnosticsTest, EmptyTimestamps) {
 
   dh_.publishMessages(empty);
   rclcpp::spin_some(dh_.node_);
+
   // The filter runs and sends the diagnostics every second.
   // Just run this for two seconds to ensure we get all the diagnostic message.
-
   for (size_t i = 0; i < 20; ++i) {
     rclcpp::spin_some(dh_.node_);
     loopRate.sleep();
@@ -248,7 +247,6 @@ TEST(FilterBaseDiagnosticsTest, EmptyTimestamps) {
         diagnostic_msgs::msg::KeyValue kv =
           dh_.diagnostics[i].status[status_index].values[key];
         // Now the keys can be checked to see whether we found our warning.
-
         if (kv.key == "imu0_timestamp") {
           received_warning_imu = true;
         }

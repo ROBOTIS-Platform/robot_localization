@@ -38,18 +38,23 @@
 
 namespace robot_localization
 {
-Ukf::Ukf(const bool alpha, const bool kappa, const bool beta)
-: FilterBase(),     // Must initialize filter base!
+Ukf::Ukf()
+: FilterBase(),
   uncorrected_(true)
 {
   size_t sigma_count = (STATE_SIZE << 1) + 1;
   sigma_points_.resize(sigma_count, Eigen::VectorXd(STATE_SIZE));
-
-  // Prepare constants
-  lambda_ = alpha * alpha * (STATE_SIZE + kappa) - STATE_SIZE;
-
   state_weights_.resize(sigma_count);
   covar_weights_.resize(sigma_count);
+}
+
+Ukf::~Ukf() {}
+
+void Ukf::setConstants(double alpha, double kappa, double beta)
+{
+  // Prepare constants
+  size_t sigma_count = (STATE_SIZE << 1) + 1;
+  lambda_ = alpha * alpha * (STATE_SIZE + kappa) - STATE_SIZE;
 
   state_weights_[0] = lambda_ / (STATE_SIZE + lambda_);
   covar_weights_[0] = state_weights_[0] + (1 - (alpha * alpha) + beta);
@@ -60,8 +65,6 @@ Ukf::Ukf(const bool alpha, const bool kappa, const bool beta)
     covar_weights_[i] = state_weights_[i];
   }
 }
-
-Ukf::~Ukf() {}
 
 void Ukf::correct(const Measurement & measurement)
 {
@@ -289,6 +292,8 @@ void Ukf::predict(
   // We'll need these trig calculations a lot.
   double sp = ::sin(pitch);
   double cp = ::cos(pitch);
+  double cpi = 1.0 / cp;
+  double tp = sp * cpi;
 
   double sr = ::sin(roll);
   double cr = ::cos(roll);
@@ -330,24 +335,13 @@ void Ukf::predict(
     0.5 * transfer_function_(StateMemberZ, StateMemberVy) * delta_sec;
   transfer_function_(StateMemberZ, StateMemberAz) =
     0.5 * transfer_function_(StateMemberZ, StateMemberVz) * delta_sec;
-  transfer_function_(StateMemberRoll, StateMemberVroll) =
-    transfer_function_(StateMemberX, StateMemberVx);
-  transfer_function_(StateMemberRoll, StateMemberVpitch) =
-    transfer_function_(StateMemberX, StateMemberVy);
-  transfer_function_(StateMemberRoll, StateMemberVyaw) =
-    transfer_function_(StateMemberX, StateMemberVz);
-  transfer_function_(StateMemberPitch, StateMemberVroll) =
-    transfer_function_(StateMemberY, StateMemberVx);
-  transfer_function_(StateMemberPitch, StateMemberVpitch) =
-    transfer_function_(StateMemberY, StateMemberVy);
-  transfer_function_(StateMemberPitch, StateMemberVyaw) =
-    transfer_function_(StateMemberY, StateMemberVz);
-  transfer_function_(StateMemberYaw, StateMemberVroll) =
-    transfer_function_(StateMemberZ, StateMemberVx);
-  transfer_function_(StateMemberYaw, StateMemberVpitch) =
-    transfer_function_(StateMemberZ, StateMemberVy);
-  transfer_function_(StateMemberYaw, StateMemberVyaw) =
-    transfer_function_(StateMemberZ, StateMemberVz);
+  transfer_function_(StateMemberRoll, StateMemberVroll) = delta_sec;
+  transfer_function_(StateMemberRoll, StateMemberVpitch) = sr * tp * delta_sec;
+  transfer_function_(StateMemberRoll, StateMemberVyaw) = cr * tp * delta_sec;
+  transfer_function_(StateMemberPitch, StateMemberVpitch) = cr * delta_sec;
+  transfer_function_(StateMemberPitch, StateMemberVyaw) = -sr * delta_sec;
+  transfer_function_(StateMemberYaw, StateMemberVpitch) = sr * cpi * delta_sec;
+  transfer_function_(StateMemberYaw, StateMemberVyaw) = cr * cpi * delta_sec;
   transfer_function_(StateMemberVx, StateMemberAx) = delta_sec;
   transfer_function_(StateMemberVy, StateMemberAy) = delta_sec;
   transfer_function_(StateMemberVz, StateMemberAz) = delta_sec;

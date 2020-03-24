@@ -40,7 +40,7 @@
 namespace robot_localization
 {
 Ekf::Ekf()
-: FilterBase()     // Must initialize filter base!
+: FilterBase()
 {}
 
 Ekf::~Ekf() {}
@@ -205,7 +205,6 @@ void Ekf::predict(
   double x_vel = state_(StateMemberVx);
   double y_vel = state_(StateMemberVy);
   double z_vel = state_(StateMemberVz);
-  // double roll_vel = state_(StateMemberVroll);
   double pitch_vel = state_(StateMemberVpitch);
   double yaw_vel = state_(StateMemberVyaw);
   double x_acc = state_(StateMemberAx);
@@ -242,9 +241,12 @@ void Ekf::predict(
   transfer_function_(StateMemberZ, StateMemberVx) = -sp * delta_sec;
   transfer_function_(StateMemberZ, StateMemberVy) = cp * sr * delta_sec;
   transfer_function_(StateMemberZ, StateMemberVz) = cp * cr * delta_sec;
-  transfer_function_(StateMemberZ, StateMemberAx) = 0.5 * transfer_function_(StateMemberZ, StateMemberVx) * delta_sec;
-  transfer_function_(StateMemberZ, StateMemberAy) = 0.5 * transfer_function_(StateMemberZ, StateMemberVy) * delta_sec;
-  transfer_function_(StateMemberZ, StateMemberAz) = 0.5 * transfer_function_(StateMemberZ, StateMemberVz) * delta_sec;
+  transfer_function_(StateMemberZ, StateMemberAx) =
+    0.5 * transfer_function_(StateMemberZ, StateMemberVx) * delta_sec;
+  transfer_function_(StateMemberZ, StateMemberAy) =
+    0.5 * transfer_function_(StateMemberZ, StateMemberVy) * delta_sec;
+  transfer_function_(StateMemberZ, StateMemberAz) =
+    0.5 * transfer_function_(StateMemberZ, StateMemberVz) * delta_sec;
   transfer_function_(StateMemberRoll, StateMemberVroll) = delta_sec;
   transfer_function_(StateMemberRoll, StateMemberVpitch) = sr * tp * delta_sec;
   transfer_function_(StateMemberRoll, StateMemberVyaw) = cr * tp * delta_sec;
@@ -266,59 +268,64 @@ void Ekf::predict(
   y_coeff = cy * sp * cr + sy * sr;
   z_coeff = -cy * sp * sr + sy * cr;
   double dFx_dR = (y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
-                  (y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
+    (y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
   double dFR_dR = 1.0 + (cr * tp * pitch_vel - sr * tp * yaw_vel) * delta_sec;
 
   x_coeff = -cy * sp;
   y_coeff = cy * cp * sr;
   z_coeff = cy * cp * cr;
-  double dFx_dP = (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
-                  (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
-  double dFR_dP = (cpi * cpi * sr * pitch_vel + cpi * cpi * cr * yaw_vel) * delta_sec;
+  double dFx_dP =
+    (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
+    (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) *
+    one_half_at_squared;
+  double dFR_dP =
+    (cpi * cpi * sr * pitch_vel + cpi * cpi * cr * yaw_vel) * delta_sec;
 
   x_coeff = -sy * cp;
   y_coeff = -sy * sp * sr - cy * cr;
   z_coeff = -sy * sp * cr + cy * sr;
-  double dFx_dY = (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
-                  (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
-  // double dFR_dY =
-  //   (x_coeff * roll_vel + y_coeff * pitch_vel + z_coeff * yaw_vel) * delta_sec;
+  double dFx_dY =
+    (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
+    (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) *
+    one_half_at_squared;
 
   y_coeff = sy * sp * cr - cy * sr;
   z_coeff = -sy * sp * sr - cy * cr;
   double dFy_dR = (y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
-                  (y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
+    (y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
   double dFP_dR = (-sr * pitch_vel - cr * yaw_vel) * delta_sec;
 
   x_coeff = -sy * sp;
   y_coeff = sy * cp * sr;
   z_coeff = sy * cp * cr;
-  double dFy_dP = (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
-                  (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
-  // double dFP_dP =
-  //   1 +
-  //   (x_coeff * roll_vel + y_coeff * pitch_vel + z_coeff * yaw_vel) * delta_sec;
+  double dFy_dP =
+    (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
+    (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) *
+    one_half_at_squared;
 
   x_coeff = cy * cp;
   y_coeff = cy * sp * sr - sy * cr;
   z_coeff = cy * sp * cr + sy * sr;
-  double dFy_dY = (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
-                  (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
-  // double dFP_dY =
-  //   (x_coeff * roll_vel + y_coeff * pitch_vel + z_coeff * yaw_vel) * delta_sec;
+  double dFy_dY =
+    (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
+    (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) *
+    one_half_at_squared;
 
   y_coeff = cp * cr;
   z_coeff = -cp * sr;
   double dFz_dR = (y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
-                  (y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
+    (y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
   double dFY_dR = (cr * cpi * pitch_vel - sr * cpi * yaw_vel) * delta_sec;
 
   x_coeff = -cp;
   y_coeff = -sp * sr;
   z_coeff = -sp * cr;
-  double dFz_dP = (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
-                  (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) * one_half_at_squared;
-  double dFY_dP = (sr * tp * cpi * pitch_vel - cr * tp * cpi * yaw_vel) * delta_sec;
+  double dFz_dP =
+    (x_coeff * x_vel + y_coeff * y_vel + z_coeff * z_vel) * delta_sec +
+    (x_coeff * x_acc + y_coeff * y_acc + z_coeff * z_acc) *
+    one_half_at_squared;
+  double dFY_dP =
+    (sr * tp * cpi * pitch_vel - cr * tp * cpi * yaw_vel) * delta_sec;
 
   // Much of the transfer function Jacobian is identical to the transfer
   // function
@@ -376,7 +383,7 @@ void Ekf::predict(
     estimate_error_covariance_ << "\n");
 
   // (3) Project the error forward: P = J * P * J' + Q
-  estimate_error_covariance_ =  (transfer_function_jacobian_ * 
+  estimate_error_covariance_ =  (transfer_function_jacobian_ *
                                 estimate_error_covariance_ *
                                 transfer_function_jacobian_.transpose());
   estimate_error_covariance_.noalias() += delta_sec * (*process_noise_covariance);

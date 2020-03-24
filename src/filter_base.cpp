@@ -40,6 +40,7 @@
 #include <limits>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 
 namespace robot_localization
 {
@@ -320,7 +321,7 @@ void FilterBase::setProcessNoiseCovariance(
   const Eigen::MatrixXd & process_noise_covariance)
 {
   process_noise_covariance_ = process_noise_covariance;
-  dynamic_process_noise_covariance_ = process_noise_covariance;
+  dynamic_process_noise_covariance_ = process_noise_covariance_;
 }
 
 void FilterBase::setSensorTimeout(const rclcpp::Duration & sensor_timeout)
@@ -330,7 +331,7 @@ void FilterBase::setSensorTimeout(const rclcpp::Duration & sensor_timeout)
 
 void FilterBase::setState(const Eigen::VectorXd & state) {state_ = state;}
 
-void FilterBase::validateDelta(rclcpp::Duration & delta)
+void FilterBase::validateDelta(rclcpp::Duration & /*delta*/)
 {
   // TODO(someone): Need to verify this condition B'Coz
   // rclcpp::Duration(100000.0) value is 0.00010000000000000000479
@@ -371,6 +372,44 @@ void FilterBase::prepareControl(
       }
     }
   }
+}
+
+inline double FilterBase::computeControlAcceleration(
+  const double state,
+  const double control,
+  const double acceleration_limit,
+  const double acceleration_gain,
+  const double deceleration_limit,
+  const double deceleration_gain)
+{
+  FB_DEBUG("---------- FilterBase::computeControlAcceleration ----------\n");
+
+  const double error = control - state;
+  const bool same_sign = (::fabs(error) <= ::fabs(control) + 0.01);
+  const double set_point = (same_sign ? control : 0.0);
+  const bool decelerating = ::fabs(set_point) < ::fabs(state);
+  double limit = acceleration_limit;
+  double gain = acceleration_gain;
+
+  if (decelerating) {
+    limit = deceleration_limit;
+    gain = deceleration_gain;
+  }
+
+  const double final_accel = std::min(std::max(gain * error, -limit), limit);
+
+  FB_DEBUG("Control value: " <<
+    control << "\n" <<
+    "State value: " << state << "\n" <<
+    "Error: " << error << "\n" <<
+    "Same sign: " << (same_sign ? "true" : "false") << "\n" <<
+    "Set point: " << set_point << "\n" <<
+    "Decelerating: " << (decelerating ? "true" : "false") << "\n" <<
+    "Limit: " << limit << "\n" <<
+    "Gain: " << gain << "\n" <<
+    "Final is " << final_accel << "\n");
+
+  return final_accel;
 }
 
 void FilterBase::wrapStateAngles()
