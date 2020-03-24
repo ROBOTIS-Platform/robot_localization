@@ -48,11 +48,20 @@ Ekf::~Ekf() {}
 void Ekf::correct(const Measurement & measurement)
 {
   FB_DEBUG("---------------------- Ekf::correct ----------------------\n" <<
-    "State is:\n" <<state_ <<"\n"
-    "Topic is:\n" <<measurement.topic_name_ <<"\n"
-    "Measurement is:\n" <<measurement.measurement_ <<"\n"
-    "Measurement topic name is:\n" <<measurement.topic_name_ <<"\n\n"
-    "Measurement covariance is:\n" <<measurement.covariance_ << "\n");
+    "State is:\n" <<
+    state_ <<
+    "\n"
+    "Topic is:\n" <<
+    measurement.topic_name_ <<
+    "\n"
+    "Measurement is:\n" <<
+    measurement.measurement_ <<
+    "\n"
+    "Measurement topic name is:\n" <<
+    measurement.topic_name_ <<
+    "\n\n"
+    "Measurement covariance is:\n" <<
+    measurement.covariance_ << "\n");
 
   // We don't want to update everything, so we need to build matrices that only
   // update the measured parts of our state vector. Throughout prediction and
@@ -64,9 +73,11 @@ void Ekf::correct(const Measurement & measurement)
     if (measurement.update_vector_[i]) {
       // Handle nan and inf values in measurements
       if (std::isnan(measurement.measurement_(i))) {
-        FB_DEBUG("Value at index " << i <<" was nan. Excluding from update.\n");
+        FB_DEBUG("Value at index " << i <<
+          " was nan. Excluding from update.\n");
       } else if (std::isinf(measurement.measurement_(i))) {
-        FB_DEBUG("Value at index " << i <<" was inf. Excluding from update.\n");
+        FB_DEBUG("Value at index " << i <<
+          " was inf. Excluding from update.\n");
       } else {
         update_indices.push_back(i);
       }
@@ -98,7 +109,8 @@ void Ekf::correct(const Measurement & measurement)
     state_subset(i) = state_(update_indices[i]);
 
     for (size_t j = 0; j < update_size; ++j) {
-      measurement_covariance_subset(i, j) = measurement.covariance_(update_indices[i], update_indices[j]);
+      measurement_covariance_subset(i, j) =
+        measurement.covariance_(update_indices[i], update_indices[j]);
     }
 
     // Handle negative (read: bad) covariances in the measurement. Rather
@@ -106,7 +118,9 @@ void Ekf::correct(const Measurement & measurement)
     // the absolute value.
     if (measurement_covariance_subset(i, i) < 0) {
       FB_DEBUG("WARNING: Negative covariance for index " <<
-        i << " of measurement (value is" <<measurement_covariance_subset(i, i) <<"). Using absolute value...\n");
+        i << " of measurement (value is" <<
+        measurement_covariance_subset(i, i) <<
+        "). Using absolute value...\n");
 
       measurement_covariance_subset(i, i) =
         ::fabs(measurement_covariance_subset(i, i));
@@ -119,7 +133,8 @@ void Ekf::correct(const Measurement & measurement)
     // measurement can be completely without error, so add a small
     // amount in that case.
     if (measurement_covariance_subset(i, i) < 1e-9) {
-      FB_DEBUG("WARNING: measurement had very small error covariance for index " <<update_indices[i] <<
+      FB_DEBUG("WARNING: measurement had very small error covariance for index " <<
+        update_indices[i] <<
         ". Adding some noise to maintain filter stability.\n");
 
       measurement_covariance_subset(i, i) = 1e-9;
@@ -136,12 +151,16 @@ void Ekf::correct(const Measurement & measurement)
   FB_DEBUG("Current state subset is:\n" <<
     state_subset << "\nMeasurement subset is:\n" <<
     measurement_subset << "\nMeasurement covariance subset is:\n" <<
-    measurement_covariance_subset <<"\nState-to-measurement subset is:\n" <<
+    measurement_covariance_subset <<
+    "\nState-to-measurement subset is:\n" <<
     state_to_measurement_subset << "\n");
 
   // (1) Compute the Kalman gain: K = (PH') / (HPH' + R)
-  Eigen::MatrixXd pht =estimate_error_covariance_ * state_to_measurement_subset.transpose();
-  Eigen::MatrixXd hphr_inverse =(state_to_measurement_subset * pht + measurement_covariance_subset).inverse();
+  Eigen::MatrixXd pht =
+    estimate_error_covariance_ * state_to_measurement_subset.transpose();
+  Eigen::MatrixXd hphr_inverse =
+    (state_to_measurement_subset * pht + measurement_covariance_subset)
+    .inverse();
   kalman_gain_subset.noalias() = pht * hphr_inverse;
 
   innovation_subset = (measurement_subset - state_subset);
@@ -163,7 +182,8 @@ void Ekf::correct(const Measurement & measurement)
   }
 
   // (2) Check Mahalanobis distance between mapped measurement and state.
-  if (checkMahalanobisThreshold(innovation_subset, hphr_inverse, measurement.mahalanobis_thresh_))
+  if (checkMahalanobisThreshold(innovation_subset, hphr_inverse,
+    measurement.mahalanobis_thresh_))
   {
     // (3) Apply the gain to the difference between the state and measurement: x
     // = x + K(z - Hx)
@@ -173,8 +193,11 @@ void Ekf::correct(const Measurement & measurement)
     // KH)P(I - KH)' + KRK'
     Eigen::MatrixXd gain_residual = identity_;
     gain_residual.noalias() -= kalman_gain_subset * state_to_measurement_subset;
-    estimate_error_covariance_ = gain_residual * estimate_error_covariance_ * gain_residual.transpose();
-    estimate_error_covariance_.noalias() += kalman_gain_subset * measurement_covariance_subset * kalman_gain_subset.transpose();
+    estimate_error_covariance_ =
+      gain_residual * estimate_error_covariance_ * gain_residual.transpose();
+    estimate_error_covariance_.noalias() += kalman_gain_subset *
+      measurement_covariance_subset *
+      kalman_gain_subset.transpose();
 
     // Handle wrapping of angles
     wrapStateAngles();
@@ -227,17 +250,27 @@ void Ekf::predict(
 
   // Prepare the transfer function
   transfer_function_(StateMemberX, StateMemberVx) = cy * cp * delta_sec;
-  transfer_function_(StateMemberX, StateMemberVy) = (cy * sp * sr - sy * cr) * delta_sec;
-  transfer_function_(StateMemberX, StateMemberVz) = (cy * sp * cr + sy * sr) * delta_sec;
-  transfer_function_(StateMemberX, StateMemberAx) = 0.5 * transfer_function_(StateMemberX, StateMemberVx) * delta_sec;
-  transfer_function_(StateMemberX, StateMemberAy) = 0.5 * transfer_function_(StateMemberX, StateMemberVy) * delta_sec;
-  transfer_function_(StateMemberX, StateMemberAz) = 0.5 * transfer_function_(StateMemberX, StateMemberVz) * delta_sec;
+  transfer_function_(StateMemberX, StateMemberVy) =
+    (cy * sp * sr - sy * cr) * delta_sec;
+  transfer_function_(StateMemberX, StateMemberVz) =
+    (cy * sp * cr + sy * sr) * delta_sec;
+  transfer_function_(StateMemberX, StateMemberAx) =
+    0.5 * transfer_function_(StateMemberX, StateMemberVx) * delta_sec;
+  transfer_function_(StateMemberX, StateMemberAy) =
+    0.5 * transfer_function_(StateMemberX, StateMemberVy) * delta_sec;
+  transfer_function_(StateMemberX, StateMemberAz) =
+    0.5 * transfer_function_(StateMemberX, StateMemberVz) * delta_sec;
   transfer_function_(StateMemberY, StateMemberVx) = sy * cp * delta_sec;
-  transfer_function_(StateMemberY, StateMemberVy) = (sy * sp * sr + cy * cr) * delta_sec;
-  transfer_function_(StateMemberY, StateMemberVz) = (sy * sp * cr - cy * sr) * delta_sec;
-  transfer_function_(StateMemberY, StateMemberAx) = 0.5 * transfer_function_(StateMemberY, StateMemberVx) * delta_sec;
-  transfer_function_(StateMemberY, StateMemberAy) = 0.5 * transfer_function_(StateMemberY, StateMemberVy) * delta_sec;
-  transfer_function_(StateMemberY, StateMemberAz) = 0.5 * transfer_function_(StateMemberY, StateMemberVz) * delta_sec;
+  transfer_function_(StateMemberY, StateMemberVy) =
+    (sy * sp * sr + cy * cr) * delta_sec;
+  transfer_function_(StateMemberY, StateMemberVz) =
+    (sy * sp * cr - cy * sr) * delta_sec;
+  transfer_function_(StateMemberY, StateMemberAx) =
+    0.5 * transfer_function_(StateMemberY, StateMemberVx) * delta_sec;
+  transfer_function_(StateMemberY, StateMemberAy) =
+    0.5 * transfer_function_(StateMemberY, StateMemberVy) * delta_sec;
+  transfer_function_(StateMemberY, StateMemberAz) =
+    0.5 * transfer_function_(StateMemberY, StateMemberVz) * delta_sec;
   transfer_function_(StateMemberZ, StateMemberVx) = -sp * delta_sec;
   transfer_function_(StateMemberZ, StateMemberVy) = cp * sr * delta_sec;
   transfer_function_(StateMemberZ, StateMemberVz) = cp * cr * delta_sec;
@@ -358,9 +391,12 @@ void Ekf::predict(
   }
 
   // (1) Apply control terms, which are actually accelerations
-  state_(StateMemberVroll) += control_acceleration_(ControlMemberVroll) * delta_sec;
-  state_(StateMemberVpitch) +=  control_acceleration_(ControlMemberVpitch) * delta_sec;
-  state_(StateMemberVyaw) +=  control_acceleration_(ControlMemberVyaw) * delta_sec;
+  state_(StateMemberVroll) +=
+    control_acceleration_(ControlMemberVroll) * delta_sec;
+  state_(StateMemberVpitch) +=
+    control_acceleration_(ControlMemberVpitch) * delta_sec;
+  state_(StateMemberVyaw) +=
+    control_acceleration_(ControlMemberVyaw) * delta_sec;
 
   state_(StateMemberAx) = (control_update_vector_[ControlMemberVx] ?
     control_acceleration_(ControlMemberVx) :
@@ -383,10 +419,11 @@ void Ekf::predict(
     estimate_error_covariance_ << "\n");
 
   // (3) Project the error forward: P = J * P * J' + Q
-  estimate_error_covariance_ =  (transfer_function_jacobian_ *
-                                estimate_error_covariance_ *
-                                transfer_function_jacobian_.transpose());
-  estimate_error_covariance_.noalias() += delta_sec * (*process_noise_covariance);
+  estimate_error_covariance_ =
+    (transfer_function_jacobian_ * estimate_error_covariance_ *
+    transfer_function_jacobian_.transpose());
+  estimate_error_covariance_.noalias() +=
+    delta_sec * (*process_noise_covariance);
 
   FB_DEBUG(
     "Predicted estimate error covariance is:\n" <<

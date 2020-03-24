@@ -225,14 +225,16 @@ public:
    * @param[in] dynamic_process_noise_covariance - Whether or not to compute
    * dynamic process noise covariance matrices
    */
-  void setUseDynamicProcessNoiseCovariance(const bool dynamic_process_noise_covariance);
+  void setUseDynamicProcessNoiseCovariance(
+    const bool dynamic_process_noise_covariance);
 
   /**
    * @brief Manually sets the filter's estimate error covariance
    * @param[in] estimate_error_covariance - The state to set as the filter's
    * current state
    */
-  void setEstimateErrorCovariance(const Eigen::MatrixXd & estimate_error_covariance);
+  void
+  setEstimateErrorCovariance(const Eigen::MatrixXd & estimate_error_covariance);
 
   /**
    * @brief Sets the filter's last measurement time.
@@ -249,7 +251,8 @@ public:
    * @param[in] process_noise_covariance - The STATE_SIZExSTATE_SIZE process
    * noise covariance matrix to use for the filter
    */
-  void setProcessNoiseCovariance(const Eigen::MatrixXd & process_noise_covariance);
+  void
+  setProcessNoiseCovariance(const Eigen::MatrixXd & process_noise_covariance);
 
   /**
    * @brief Sets the sensor timeout
@@ -310,10 +313,11 @@ protected:
    * @param[in] n_sigmas - Number of standard deviations that are considered
    * acceptable
    */
-  virtual bool checkMahalanobisThreshold(
-            const Eigen::VectorXd & innovation,
-            const Eigen::MatrixXd & innovation_covariance,
-            const double n_sigmas);
+  virtual bool
+  checkMahalanobisThreshold(
+    const Eigen::VectorXd & innovation,
+    const Eigen::MatrixXd & innovation_covariance,
+    const double n_sigmas);
 
   /**
    * @brief Converts the control term to an acceleration to be applied in the

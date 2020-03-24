@@ -41,7 +41,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
-#include <robot_localization/srv/set_datum.hpp>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/static_transform_broadcaster.h>
@@ -292,14 +291,6 @@ private:
    */
   double magnetic_declination_;
 
-  //! @brief UTM's meridian convergence
-  //!
-  //! Angle between projected meridian (True North) and UTM's grid Y-axis.
-  //! For UTM projection (Ellipsoidal Transverse Mercator) it is zero on the equator and non-zero everywhere else.
-  //! It increases as the poles are approached or as we're getting farther from central meridian.
-  //!
-  double utm_meridian_convergence_;
-
   /**
    * @brief Odometry Subscription
    */
@@ -381,7 +372,7 @@ private:
   /**
    * @brief Used for publishing the static world_frame->utm transform
    */
-  std::shared_ptr<tf2_ros::StaticTransformBroadcaster> utm_broadcaster_;
+  tf2_ros::StaticTransformBroadcaster utm_broadcaster_;
 
   /**
    * @brief UTM's meridian convergence

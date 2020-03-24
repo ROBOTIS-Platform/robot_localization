@@ -75,17 +75,12 @@ struct CallbackData
 {
   CallbackData(
     const std::string & topic_name,
-    const std::vector<bool> & update_vector,
-    const int update_sum,
-    const bool differential,
-    const bool relative,
+    const std::vector<bool> & update_vector, const int update_sum,
+    const bool differential, const bool relative,
     const double rejection_threshold)
-  : topic_name_(topic_name),
-    update_vector_(update_vector),
-    update_sum_(update_sum),
-    differential_(differential),
-    relative_(relative),
-    rejection_threshold_(rejection_threshold) {}
+  : topic_name_(topic_name), update_vector_(update_vector),
+    update_sum_(update_sum), differential_(differential),
+    relative_(relative), rejection_threshold_(rejection_threshold) {}
 
   std::string topic_name_;
   std::vector<bool> update_vector_;
@@ -95,7 +90,9 @@ struct CallbackData
   double rejection_threshold_;
 };
 
-using MeasurementQueue = std::priority_queue<MeasurementPtr, std::vector<MeasurementPtr>, Measurement>;
+using MeasurementQueue =
+  std::priority_queue<MeasurementPtr, std::vector<MeasurementPtr>,
+    Measurement>;
 using MeasurementHistoryDeque = std::deque<MeasurementPtr>;
 using FilterStateHistoryDeque = std::deque<FilterStatePtr>;
 
@@ -115,10 +112,6 @@ public:
   //! Clears out the message filters and topic subscribers.
   //!
   ~RosFilter();
-
-  //! @brief Initialize filter
-  //
-  void initialize();
 
   //! @brief Resets the filter to its initial state
   //!
@@ -156,7 +149,8 @@ public:
   //! @brief Callback method for receiving stamped control input
   //! @param[in] msg - The ROS stamped twist message to take in
   //!
-  void controlStampedCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg);
+  void
+  controlStampedCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg);
 
   //! @brief Adds a measurement to the queue of measurements to be processed
   //!
@@ -211,7 +205,8 @@ public:
   //! @param[out] message - The standard ROS acceleration message to be filled
   //! @return true if the filter is initialized, false otherwise
   //!
-  bool getFilteredAccelMessage(geometry_msgs::msg::AccelWithCovarianceStamped & message);
+  bool getFilteredAccelMessage(
+    geometry_msgs::msg::AccelWithCovarianceStamped & message);
 
   //! @brief Callback method for receiving all IMU messages
   //! @param[in] msg - The ROS IMU message to take in.
@@ -277,8 +272,7 @@ public:
   //!
   void poseCallback(
     const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg,
-    const CallbackData & callback_data,
-    const std::string & target_frame,
+    const CallbackData & callback_data, const std::string & target_frame,
     const bool imu_data);
 
   //! @brief initialize the filter
@@ -369,10 +363,8 @@ protected:
   //! static
   //!
   void addDiagnostic(
-    const int error_level,
-    const std::string & topic_and_class,
-    const std::string & message,
-    const bool is_static);
+    const int error_level, const std::string & topic_and_class,
+    const std::string & message, const bool is_static);
 
   //! @brief Aggregates all diagnostics so they can be published
   //! @param[in] wrapper - The diagnostic status wrapper to update
@@ -400,8 +392,7 @@ protected:
     Eigen::MatrixXd & covariance_out,
     const std::string & topic_name,
     const std::vector<bool> & update_vector,
-    const size_t offset,
-    const size_t dimension);
+    const size_t offset, const size_t dimension);
 
   //! @brief Utility method for copying covariances from Eigen matrices to ROS
   //! covariance arrays
@@ -412,8 +403,7 @@ protected:
   //!
   void copyCovariance(
     const Eigen::MatrixXd & covariance_in,
-    double * covariance_out,
-    const size_t dimension);
+    double * covariance_out, const size_t dimension);
 
   //! @brief Loads fusion settings from the config file
   //! @param[in] topic_name - The name of the topic for which to load settings
@@ -747,42 +737,6 @@ protected:
   //! standard Empty service.
   //!
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr enable_filter_srv_;
-
-  //! @brief QoS
-  //!
-  rclcpp::QoS qos_;
-
-  //! @brief Publisher to publish odometry/filtered
-  //!
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr position_pub_;
-
-  //! @brief Publisher to publish acceleration with covariance
-  //!
-  rclcpp::Publisher<geometry_msgs::msg::AccelWithCovarianceStamped>::SharedPtr accel_pub_;
-
-  //! @brief Transform broadcaster to broadcast world transform
-  //!
-  std::shared_ptr<tf2_ros::TransformBroadcaster> world_transform_broadcaster_;
-
-  //! @brief Timer
-  //!
-  rclcpp::TimerBase::SharedPtr update_timer_;
-
-  //! @brief Minimum frequency diagnostic
-  //!
-  double minFrequency_;
-
-  //! @brief Maximum frequency diagnostic
-  //!
-  double maxFrequency_;
-
-  //! @brief Diagnostic updater
-  //!
-  std::unique_ptr<diagnostic_updater::HeaderlessTopicDiagnostic> freq_diag_;
-
-  //! @brief Time
-  //!
-  rclcpp::Time last_diag_time_;
 
   //! @brief Transform buffer for managing coordinate transforms
   //!

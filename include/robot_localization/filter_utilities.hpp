@@ -43,7 +43,10 @@
 #include <string>
 #include <vector>
 
-#define FB_DEBUG(msg) if (getDebug()) { *debug_stream_ << msg; }
+#define FB_DEBUG(msg) \
+  if (getDebug()) { \
+    *debug_stream_ << msg; \
+  }
 
 // Handy methods for debug output
 std::ostream & operator<<(std::ostream & os, const Eigen::MatrixXd & mat);
@@ -82,19 +85,16 @@ inline double clampRotation(double rotation)
 inline void appendPrefix(std::string tf_prefix, std::string & frame_id)
 {
   // Strip all leading slashes for tf2 compliance
-  if (!frame_id.empty() && frame_id.at(0) == '/') 
-  {
+  if (!frame_id.empty() && frame_id.at(0) == '/') {
     frame_id = frame_id.substr(1);
   }
 
-  if (!tf_prefix.empty() && tf_prefix.at(0) == '/') 
-  {
+  if (!tf_prefix.empty() && tf_prefix.at(0) == '/') {
     tf_prefix = tf_prefix.substr(1);
   }
 
   // If we do have a tf prefix, then put a slash in between
-  if (!tf_prefix.empty()) 
-  {
+  if (!tf_prefix.empty()) {
     frame_id = tf_prefix + "/" + frame_id;
   }
 }
