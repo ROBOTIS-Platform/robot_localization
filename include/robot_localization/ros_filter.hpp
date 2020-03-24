@@ -75,16 +75,16 @@ struct CallbackData
 {
   CallbackData(
     const std::string & topic_name,
-    const std::vector<bool> & update_vector, 
+    const std::vector<bool> & update_vector,
     const int update_sum,
-    const bool differential, 
+    const bool differential,
     const bool relative,
     const double rejection_threshold)
-  : topic_name_(topic_name), 
+  : topic_name_(topic_name),
     update_vector_(update_vector),
-    update_sum_(update_sum), 
+    update_sum_(update_sum),
     differential_(differential),
-    relative_(relative), 
+    relative_(relative),
     rejection_threshold_(rejection_threshold) {}
 
   std::string topic_name_;
@@ -99,10 +99,7 @@ using MeasurementQueue = std::priority_queue<MeasurementPtr, std::vector<Measure
 using MeasurementHistoryDeque = std::deque<MeasurementPtr>;
 using FilterStateHistoryDeque = std::deque<FilterStatePtr>;
 
-<<<<<<< HEAD
-=======
 template<class T>
->>>>>>> upstream/dashing-devel
 class RosFilter : public rclcpp::Node
 {
 public:
@@ -111,14 +108,7 @@ public:
   //! The RosFilter constructor makes sure that anyone using
   //! this template is doing so with the correct object type
   //!
-<<<<<<< HEAD
-  RosFilter(
-    // rclcpp::Node::SharedPtr node,
-    std::string node_name,
-    robot_localization::FilterBase::UniquePtr & filter);
-=======
   explicit RosFilter(const rclcpp::NodeOptions & options);
->>>>>>> upstream/dashing-devel
 
   //! @brief Destructor
   //!
@@ -287,7 +277,7 @@ public:
   //!
   void poseCallback(
     const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg,
-    const CallbackData & callback_data, 
+    const CallbackData & callback_data,
     const std::string & target_frame,
     const bool imu_data);
 
@@ -308,10 +298,6 @@ public:
   //! @param[in] request - Custom service request with pose information
   //! @return true if successful, false if not
   bool setPoseSrvCallback(
-<<<<<<< HEAD
-    const std::shared_ptr<robot_localization::srv::SetPose::Request> request,
-    std::shared_ptr<robot_localization::srv::SetPose::Response> response);
-=======
     const std::shared_ptr<rmw_request_id_t> request_header,
     const std::shared_ptr<robot_localization::srv::SetPose::Request> request,
     std::shared_ptr<robot_localization::srv::SetPose::Response> response);
@@ -324,7 +310,6 @@ public:
     const std::shared_ptr<rmw_request_id_t>,
     const std::shared_ptr<std_srvs::srv::Empty::Request>,
     const std::shared_ptr<std_srvs::srv::Empty::Response>);
->>>>>>> upstream/dashing-devel
 
   //! @brief Callback method for receiving all twist messages
   //! @param[in] msg - The ROS stamped twist with covariance message to take in.
@@ -340,11 +325,7 @@ public:
   //! @param[out] message - The standard ROS odometry message to be validated
   //! @return true if the filter output is valid, false otherwise
   //!
-<<<<<<< HEAD
-  bool validateFilterOutput(const nav_msgs::msg::Odometry &message);
-=======
   bool validateFilterOutput(const nav_msgs::msg::Odometry & message);
->>>>>>> upstream/dashing-devel
 
 protected:
   //! @brief Finds the latest filter state before the given timestamp and makes
@@ -388,20 +369,16 @@ protected:
   //! static
   //!
   void addDiagnostic(
-    const int error_level, 
+    const int error_level,
     const std::string & topic_and_class,
-    const std::string & message, 
+    const std::string & message,
     const bool is_static);
 
   //! @brief Aggregates all diagnostics so they can be published
   //! @param[in] wrapper - The diagnostic status wrapper to update
   //!
-<<<<<<< HEAD
-  void aggregateDiagnostics(diagnostic_updater::DiagnosticStatusWrapper &wrapper);
-=======
   void aggregateDiagnostics(
     diagnostic_updater::DiagnosticStatusWrapper & wrapper);
->>>>>>> upstream/dashing-devel
 
   //! @brief Utility method for copying covariances from ROS covariance arrays
   //! to Eigen matrices
@@ -423,7 +400,7 @@ protected:
     Eigen::MatrixXd & covariance_out,
     const std::string & topic_name,
     const std::vector<bool> & update_vector,
-    const size_t offset, 
+    const size_t offset,
     const size_t dimension);
 
   //! @brief Utility method for copying covariances from Eigen matrices to ROS
@@ -435,7 +412,7 @@ protected:
   //!
   void copyCovariance(
     const Eigen::MatrixXd & covariance_in,
-    double * covariance_out, 
+    double * covariance_out,
     const size_t dimension);
 
   //! @brief Loads fusion settings from the config file
@@ -778,7 +755,7 @@ protected:
   //! @brief Publisher to publish odometry/filtered
   //!
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr position_pub_;
-  
+
   //! @brief Publisher to publish acceleration with covariance
   //!
   rclcpp::Publisher<geometry_msgs::msg::AccelWithCovarianceStamped>::SharedPtr accel_pub_;
